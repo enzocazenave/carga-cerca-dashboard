@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CargaCerca · Panel de cargadores</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="brand">Carga<span>Cerca</span></div>
+      <nav class="nav"><a href="/" class="active">Cargadores</a></nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="page-head">
+      <div>
+        <h1>Cargadores</h1>
+        <div class="sub">Panel interno del prototipo</div>
+      </div>
+      <button class="btn" id="addBtn">+ Agregar cargador</button>
+    </div>
+
+    <div id="list" class="grid"></div>
+    <div id="empty" class="empty" hidden>Todavía no hay cargadores. Agregá el primero con el botón de arriba.</div>
+  </main>
+
+  <div id="modalRoot"></div>
+
+  <script src="/list.js"></script>
+</body>
+</html>

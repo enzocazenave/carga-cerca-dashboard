@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CargaCerca · Cargador</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="brand">Carga<span>Cerca</span></div>
+      <nav class="nav"><a href="/">Cargadores</a></nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <a href="/" class="back-link">← Volver a cargadores</a>
+
+    <div class="detail-head">
+      <h1 id="name">Cargador</h1>
+      <div class="detail-meta">
+        <span class="mono" id="cid">—</span>
+        <span id="loc">—</span>
+      </div>
+    </div>
+
+    <div class="status-row">
+      <div class="item">
+        <div class="label">Estado</div>
+        <div class="value"><span class="status"><span class="dot" id="statusDot"></span><span id="statusText">—</span></span></div>
+      </div>
+      <div class="item">
+        <div class="label">Última actualización</div>
+        <div class="value" id="lastSeen">—</div>
+      </div>
+    </div>
+
+    <div class="metrics">
+      <div class="metric">
+        <div class="label">Voltaje dispositivo</div>
+        <div class="big"><span id="busV">—</span> V</div>
+      </div>
+      <div class="metric">
+        <div class="label">Voltaje fuente</div>
+        <div class="big"><span id="srcV">—</span> V</div>
+      </div>
+      <div class="metric">
+        <div class="label">Corriente</div>
+        <div class="big"><span id="currentA">—</span> A</div>
+        <div class="small"><span id="currentMa">—</span> mA</div>
+      </div>
+      <div class="metric">
+        <div class="label">Potencia</div>
+        <div class="big"><span id="powerW">—</span> W</div>
+        <div class="small"><span id="powerMw">—</span> mW</div>
+      </div>
+      <div class="metric">
+        <div class="label">Caída shunt</div>
+        <div class="big"><span id="shuntMv">—</span> mV</div>
+      </div>
+    </div>
+
+    <div class="section-title">Sesión actual</div>
+    <div id="sessionBox"></div>
+
+    <div class="section-title">Gráficos · últimas 100 mediciones</div>
+    <div class="charts">
+      <div class="chart-box"><h3>Corriente (A)</h3><canvas id="chartCurrent"></canvas></div>
+      <div class="chart-box"><h3>Potencia (W)</h3><canvas id="chartPower"></canvas></div>
+      <div class="chart-box"><h3>Voltaje del dispositivo (V)</h3><canvas id="chartVoltage"></canvas></div>
+    </div>
+  </main>
+
+  <script src="/detail.js"></script>
+</body>
+</html>

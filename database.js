@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const Database = require('better-sqlite3');
+const { DatabaseSync } = require('node:sqlite'); // SQLite nativo de Node (>= 22.13) — sin dependencias nativas que compilar
 const config = require('./config');
 
 // Asegura que la carpeta del archivo SQLite exista (ej: ./data)
@@ -12,9 +12,9 @@ if (dbDir && dbDir !== '.' && !fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }
 
-const db = new Database(dbPath);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+const db = new DatabaseSync(dbPath);
+db.exec('PRAGMA journal_mode = WAL');
+db.exec('PRAGMA foreign_keys = ON');
 
 // --- Esquema ---
 db.exec(`

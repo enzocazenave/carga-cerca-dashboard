@@ -10,8 +10,8 @@ ver sus datos casi en tiempo real.
 
 ## Stack
 
-- Node.js + Express
-- SQLite (`better-sqlite3`)
+- Node.js (>= 22.13) + Express
+- SQLite nativo de Node (`node:sqlite`) — sin dependencias nativas que compilar
 - HTML + CSS + JavaScript vanilla
 - Chart.js vía CDN
 
@@ -63,6 +63,8 @@ Umbrales de estado y de sesión están centralizados en [`config.js`](config.js)
 2. **Conectar el repositorio** (*Deploy from GitHub repo*).
 3. Railway detecta Node y ejecuta automáticamente `npm install` y `npm start`
    (ver [`railway.json`](railway.json), que también define el healthcheck `/health`).
+   El archivo [`.nvmrc`](.nvmrc) fija Node 22, necesario para `node:sqlite`.
+   No hay dependencias nativas: `npm install` no compila nada.
 4. **Configurar un Volume** si querés persistencia real de SQLite:
    - En el servicio → pestaña *Volumes* → *New Volume*.
    - Mount path: `/data`.
@@ -169,7 +171,7 @@ Se calcula con la última medición (valores en [`config.js`](config.js)):
 package.json
 railway.json
 server.js          # Express: API + vistas
-database.js        # crea SQLite (tablas + índices) si no existe
+database.js        # abre SQLite con node:sqlite y crea tablas + índice si no existen
 config.js          # puerto, ruta DB, umbrales de estado y sesión
 status.js          # cálculo de estado y de sesión
 simulate.js        # simulador de ESP32 (opcional)

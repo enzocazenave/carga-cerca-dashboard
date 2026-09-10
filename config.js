@@ -51,10 +51,10 @@ const config = {
   // --- Vista cliente (estimaciones amigables, no técnicas) ---
   client: {
     // Precio de la energía. Si es 0 no se muestra el costo estimado.
-    pricePerKwh: Number(process.env.PRICE_PER_KWH) || 0,
+    pricePerKwh: Number(process.env.PRICE_PER_KWH) || 76,
     currency: process.env.PRICE_CURRENCY || 'ARS',
     // Autonomía aproximada de un auto eléctrico por kWh (para el "≈ X km cargados").
-    kmPerKwh: Number(process.env.KM_PER_KWH) || 6,
+    kmPerKwh: Number(process.env.KM_PER_KWH) || 7,
   },
 };
 

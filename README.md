@@ -30,6 +30,17 @@ Abrir: <http://localhost:3000>
 
 La base SQLite se crea sola en `./data/cargacerca.sqlite` la primera vez.
 
+### Vistas
+
+| Ruta                     | Para quién      | Qué muestra                                                        |
+| ------------------------ | --------------- | ---------------------------------------------------------------- |
+| `/`                      | Interno         | Panel de cargadores (alta / edición / borrado).                  |
+| `/chargers/:chargerId`   | Interno/técnico | Detalle completo: todas las métricas + 3 gráficos.               |
+| `/c/:chargerId`          | **Cliente**     | Vista mobile simple: estado, energía cargada (kWh y ≈ km), tiempo, costo estimado y un gráfico de potencia. Datos técnicos plegados. |
+
+La vista cliente se abre desde el panel (botón **Vista cliente** en cada card) o
+compartiendo el link directo `https://TU-DOMINIO.up.railway.app/c/CC-001`.
+
 ### Simulador (opcional, sin hardware)
 
 Para ver el dashboard "moverse" sin un ESP32 real:
@@ -45,10 +56,13 @@ Crea el cargador si no existe y envía una medición cada 5 s alternando carga/r
 
 ## Variables de entorno
 
-| Variable        | Default                      | Descripción                                              |
-| --------------- | ---------------------------- | ------------------------------------------------------- |
-| `PORT`          | `3000`                       | Puerto del servidor. En Railway se define solo.         |
-| `DATABASE_PATH` | `./data/cargacerca.sqlite`   | Ruta del archivo SQLite. En Railway apuntar a un Volume. |
+| Variable         | Default                      | Descripción                                              |
+| ---------------- | ---------------------------- | ------------------------------------------------------- |
+| `PORT`           | `3000`                       | Puerto del servidor. En Railway se define solo.         |
+| `DATABASE_PATH`  | `./data/cargacerca.sqlite`   | Ruta del archivo SQLite. En Railway apuntar a un Volume. |
+| `PRICE_PER_KWH`  | `0`                          | Precio de la energía para la vista cliente. `0` oculta el costo. |
+| `PRICE_CURRENCY` | `ARS`                        | Moneda del costo estimado.                              |
+| `KM_PER_KWH`     | `6`                          | Autonomía aprox. por kWh para el "≈ X km cargados".     |
 
 El servidor escucha en `0.0.0.0` y usa `process.env.PORT || 3000`. No hay
 `localhost` hardcodeado en el backend.
@@ -172,14 +186,16 @@ package.json
 railway.json
 server.js          # Express: API + vistas
 database.js        # abre SQLite con node:sqlite y crea tablas + índice si no existen
-config.js          # puerto, ruta DB, umbrales de estado y sesión
+config.js          # puerto, ruta DB, umbrales de estado/sesión, precio kWh
 status.js          # cálculo de estado y de sesión
 simulate.js        # simulador de ESP32 (opcional)
 public/
   index.html       # panel de cargadores
-  charger.html     # detalle de un cargador (cards + 3 gráficos)
+  charger.html     # detalle técnico de un cargador (cards + 3 gráficos)
+  cliente.html     # vista cliente mobile (/c/:chargerId)
   list.js
   detail.js
+  cliente.js
   styles.css
 data/
   cargacerca.sqlite  # se crea sola

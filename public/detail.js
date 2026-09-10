@@ -1,6 +1,7 @@
 'use strict';
 
 const chargerId = decodeURIComponent(location.pathname.split('/').pop());
+document.getElementById('clientLink').href = `/c/${encodeURIComponent(chargerId)}`;
 
 const STATUS_CLASS = {
   'Cargando': 'charging',

@@ -60,6 +60,7 @@ async function load() {
           <div class="seen">Última conexión: ${fmtAgo(c.lastSeenAt)}</div>
         </a>
         <div class="card-actions">
+          <a class="btn link" href="/c/${encodeURIComponent(c.chargerId)}">Vista cliente</a>
           <button class="btn link" data-edit="${esc(c.chargerId)}">Editar</button>
           <button class="btn link" data-del="${esc(c.chargerId)}">Eliminar</button>
         </div>

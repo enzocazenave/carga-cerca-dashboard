@@ -216,11 +216,26 @@ app.get('/api/chargers/:chargerId/latest', (req, res) => {
 });
 
 // ------------------------------------------------------------------
+// Config pública (para la vista cliente)
+// ------------------------------------------------------------------
+app.get('/api/config', (_req, res) => {
+  res.json({
+    pricePerKwh: config.client.pricePerKwh,
+    currency: config.client.currency,
+    kmPerKwh: config.client.kmPerKwh,
+  });
+});
+
+// ------------------------------------------------------------------
 // Vistas HTML
 // ------------------------------------------------------------------
 app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/chargers/:chargerId', (_req, res) =>
   res.sendFile(path.join(__dirname, 'public', 'charger.html'))
+);
+// Vista cliente (mobile, no técnica)
+app.get('/c/:chargerId', (_req, res) =>
+  res.sendFile(path.join(__dirname, 'public', 'cliente.html'))
 );
 
 // ------------------------------------------------------------------

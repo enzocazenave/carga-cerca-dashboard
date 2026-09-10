@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#eef2f6" />
+  <title>CargaCerca · Mi carga</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --green: #16a34a;
+      --green-soft: #22c55e;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --card: #ffffff;
+      --page: #eef2f6;
+      --ring: rgba(15, 23, 42, 0.06);
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; overflow-x: hidden; max-width: 100%; }
+    canvas { max-width: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+      background: var(--page);
+      color: var(--ink);
+      line-height: 1.45;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+
+    .app {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+      padding: 16px 16px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 2px 4px;
+    }
+    .logo { font-weight: 800; letter-spacing: -0.02em; font-size: 17px; }
+    .logo b { color: var(--green); }
+    .live {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .live::before {
+      content: "";
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #cbd5e1;
+    }
+    .live.on { color: var(--green); }
+    .live.on::before { background: var(--green-soft); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); animation: ping 1.8s ease-out infinite; }
+
+    .place { padding: 0 4px; }
+    .place h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
+    .place p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+
+    /* ---- Hero ---- */
+    .hero {
+      position: relative;
+      overflow: hidden;
+      border-radius: 26px;
+      padding: 28px 22px 26px;
+      color: #fff;
+      background: linear-gradient(165deg, #334155, #1e293b);
+      box-shadow: 0 18px 40px -18px rgba(15, 23, 42, 0.45);
+      text-align: center;
+      transition: background 0.4s ease;
+    }
+    .hero.charging { background: linear-gradient(165deg, #16a34a, #0d9488); }
+    .hero.low { background: linear-gradient(165deg, #d97706, #b45309); }
+    .hero.idle { background: linear-gradient(165deg, #2563eb, #1d4ed8); }
+    .hero.off { background: linear-gradient(165deg, #475569, #334155); }
+
+    .hero-badge {
+      width: 78px; height: 78px;
+      margin: 0 auto 14px;
+      border-radius: 50%;
+      display: grid; place-items: center;
+      font-size: 34px;
+      background: rgba(255, 255, 255, 0.16);
+      backdrop-filter: blur(2px);
+      position: relative;
+    }
+    .hero.charging .hero-badge::after {
+      content: "";
+      position: absolute; inset: -8px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      animation: pulse 2s ease-out infinite;
+    }
+    .hero-status { font-size: 20px; font-weight: 800; letter-spacing: -0.01em; }
+    .hero-power { margin-top: 12px; display: flex; align-items: baseline; justify-content: center; gap: 6px; }
+    .hero-power .num { font-size: 52px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+    .hero-power .unit { font-size: 18px; font-weight: 700; opacity: 0.8; }
+    .hero-sub { margin-top: 6px; font-size: 13px; opacity: 0.82; }
+
+    /* ---- Stats ---- */
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .stat {
+      min-width: 0;
+      background: var(--card);
+      border-radius: 20px;
+      padding: 16px;
+      box-shadow: 0 1px 3px var(--ring);
+    }
+    .stat-value, .stat-hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .stat-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+    .stat-value { margin-top: 8px; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+    .stat-value small { font-size: 14px; font-weight: 700; color: var(--muted); }
+    .stat-hint { margin-top: 4px; font-size: 12px; color: var(--muted); }
+
+    /* ---- Cost ---- */
+    .cost {
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: #fff;
+      border-radius: 20px;
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .cost-label { font-size: 12px; font-weight: 600; opacity: 0.75; text-transform: uppercase; letter-spacing: 0.03em; }
+    .cost-value { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
+    .cost-hint { font-size: 12px; opacity: 0.7; text-align: right; }
+
+    /* ---- Chart ---- */
+    .chart-card {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 16px 14px 8px;
+      box-shadow: 0 1px 3px var(--ring);
+    }
+    .chart-head { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; padding: 0 4px 6px; }
+    .chart-wrap { position: relative; width: 100%; height: 120px; overflow: hidden; }
+    .chart-wrap canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
+
+    /* ---- Tech ---- */
+    .tech {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 4px 4px;
+      box-shadow: 0 1px 3px var(--ring);
+    }
+    .tech summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 14px 16px;
+      font-weight: 700;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .tech summary::-webkit-details-marker { display: none; }
+    .tech summary::after { content: "▾"; color: var(--muted); transition: transform 0.2s; }
+    .tech[open] summary::after { transform: rotate(180deg); }
+    .tech-grid { padding: 0 16px 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+    .tech-grid > div { display: flex; flex-direction: column; }
+    .tech-grid span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+    .tech-grid b { font-size: 16px; font-variant-numeric: tabular-nums; }
+    .tech-link { display: block; padding: 12px 16px 14px; font-size: 13px; font-weight: 600; color: var(--green); text-decoration: none; }
+
+    .foot { text-align: center; font-size: 12px; color: var(--muted); padding-top: 4px; }
+
+    .banner {
+      background: #fee2e2;
+      color: #b91c1c;
+      border-radius: 16px;
+      padding: 14px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    @keyframes pulse { from { transform: scale(0.9); opacity: 0.9; } to { transform: scale(1.5); opacity: 0; } }
+    @keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); } 70%,100% { box-shadow: 0 0 0 8px rgba(34,197,94,0); } }
+    @media (prefers-reduced-motion: reduce) {
+      .hero.charging .hero-badge::after, .live.on::before { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <span class="logo">Carga<b>Cerca</b></span>
+      <span class="live" id="live">conectando…</span>
+    </div>
+
+    <div id="banner"></div>
+
+    <div class="place">
+      <h1 id="name">—</h1>
+      <p id="loc">—</p>
+    </div>
+
+    <section class="hero" id="hero">
+      <div class="hero-badge" id="badge">⚡</div>
+      <div class="hero-status" id="status">Conectando…</div>
+      <div class="hero-power"><span class="num" id="power">0.0</span><span class="unit">kW</span></div>
+      <div class="hero-sub" id="sub">Velocidad de carga</div>
+    </section>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Energía cargada</div>
+        <div class="stat-value" id="energy">—</div>
+        <div class="stat-hint" id="energyKm">≈ 0 km de autonomía</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Tiempo de carga</div>
+        <div class="stat-value" id="duration">00:00:00</div>
+        <div class="stat-hint" id="since">Sin sesión activa</div>
+      </div>
+    </div>
+
+    <div class="cost" id="costCard" hidden>
+      <div>
+        <div class="cost-label">Costo estimado</div>
+        <div class="cost-value" id="costValue">—</div>
+      </div>
+      <div class="cost-hint" id="costHint"></div>
+    </div>
+
+    <section class="chart-card">
+      <div class="chart-head">Potencia · últimos minutos</div>
+      <div class="chart-wrap"><canvas id="chart"></canvas></div>
+    </section>
+
+    <details class="tech">
+      <summary>Detalles técnicos</summary>
+      <div class="tech-grid">
+        <div><span>Voltaje dispositivo</span><b id="tBus">—</b></div>
+        <div><span>Voltaje fuente</span><b id="tSrc">—</b></div>
+        <div><span>Corriente</span><b id="tCur">—</b></div>
+        <div><span>Potencia</span><b id="tPow">—</b></div>
+        <div><span>Caída shunt</span><b id="tShu">—</b></div>
+        <div><span>Última lectura</span><b id="tSeen">—</b></div>
+      </div>
+      <a class="tech-link" id="techLink" href="#">Ver panel técnico completo →</a>
+    </details>
+
+    <div class="foot">CargaCerca · prototipo</div>
+  </div>
+
+  <script src="/cliente.js"></script>
+</body>
+</html>

@@ -583,7 +583,7 @@ void pantallaEsperando() {
     );
 
     textoCentrado(
-      "para habilitar la tarjeta",
+      "para habilitar la carga",
       171,
       1,
       COLOR_MUTED
@@ -679,6 +679,12 @@ void pantallaTarjetaSinSolicitud() {
   tft.setTextSize(3);
   tft.setCursor(154, 86);
   tft.print("!");
+
+  // tituloCentrado() usa una fuente vectorial (FreeSans*), pero no toca
+  // setTextSize(): si lo dejamos en 3 (recién usado para el "!" de arriba),
+  // el título sale gigante y se corta. Con las fuentes vectoriales el
+  // tamaño correcto es siempre 1.
+  tft.setTextSize(1);
 
   tituloCentrado(
     "Pedila desde la app",

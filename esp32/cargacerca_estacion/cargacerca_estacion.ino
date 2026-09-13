@@ -132,13 +132,12 @@ unsigned long ultimoCalculoEnergiaMs = 0;
 // BOTÓN
 // =====================================================
 
+// Solo para DIBUJAR el botón (posición/tamaño visual).
+// La detección del toque NO usa estas coordenadas: ver botonInicioPresionado().
 const int BTN_X = 25;
 const int BTN_Y = 155;
 const int BTN_W = 270;
 const int BTN_H = 58;
-
-// Más tolerante para dedo
-const int BTN_TOUCH_MARGIN = 25;
 
 // =====================================================
 // PALETA LIGHT
@@ -1042,6 +1041,12 @@ bool botonInicioPresionado() {
   int x;
   int y;
 
+  // NOTA: acá solo se llama con estado == ESPERANDO_INICIO, así que no
+  // hace falta acertarle al rectángulo del botón: cualquier toque válido
+  // en la pantalla (ya filtrado por presión mínima en leerTouch) inicia
+  // la carga. Esto evita depender de que el mapeo raw->pantalla del
+  // XPT2046 esté calibrado pixel a pixel (que es frágil y varía de
+  // módulo a módulo); x/y solo quedan para loguear en Serial.
   if (
     !leerTouch(
       x,
@@ -1051,31 +1056,8 @@ bool botonInicioPresionado() {
     return false;
   }
 
-  bool dentro =
-    x >=
-      BTN_X -
-      BTN_TOUCH_MARGIN &&
-
-    x <=
-      BTN_X +
-      BTN_W +
-      BTN_TOUCH_MARGIN &&
-
-    y >=
-      BTN_Y -
-      BTN_TOUCH_MARGIN &&
-
-    y <=
-      BTN_Y +
-      BTN_H +
-      BTN_TOUCH_MARGIN;
-
-  if (!dentro) {
-    return false;
-  }
-
   Serial.println(
-    "BOTON INICIAR CARGA"
+    "BOTON INICIAR CARGA (toda la pantalla es táctil en esta vista)"
   );
 
   // Feedback táctil

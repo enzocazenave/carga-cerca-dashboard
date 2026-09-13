@@ -10,6 +10,9 @@ const VIEW = {
   'Cargando': { cls: 'charging', icon: '⚡', title: 'Cargando', sub: 'Velocidad de carga' },
   'Consumo bajo': { cls: 'low', icon: '🔋', title: 'Carga lenta', sub: 'Consumo bajo' },
   'Disponible': { cls: 'idle', icon: '🔌', title: 'Listo para cargar', sub: 'Enchufá tu auto al cargador' },
+  'Esperando tarjeta': { cls: 'idle', icon: '💳', title: 'Acercá tu tarjeta', sub: 'Apoyá tu tarjeta o llavero en el lector del cargador' },
+  'Tarjeta leída · esperando inicio': { cls: 'low', icon: '👉', title: 'Tarjeta leída', sub: 'Tocá "Iniciar carga" en la pantalla del cargador' },
+  'Carga finalizada': { cls: 'idle', icon: '✅', title: 'Carga finalizada', sub: 'Ya podés retirar el cable' },
   'Desconectado': { cls: 'off', icon: '⚠️', title: 'Sin conexión', sub: 'No estamos recibiendo datos' },
   'Nunca conectado': { cls: 'off', icon: '🔌', title: 'Esperando conexión', sub: 'Todavía no llegaron datos' },
 };

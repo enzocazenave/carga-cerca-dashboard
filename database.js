@@ -42,6 +42,16 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_measurements_charger_time
     ON measurements (charger_id, created_at DESC);
+
+  -- Último estado físico reportado por el dispositivo (NFC + relé).
+  -- Una fila por cargador: siempre se pisa con el estado más reciente.
+  CREATE TABLE IF NOT EXISTS device_status (
+    charger_id  TEXT PRIMARY KEY,
+    state       TEXT NOT NULL,
+    card_uid    TEXT,
+    updated_at  TEXT NOT NULL,
+    FOREIGN KEY (charger_id) REFERENCES chargers (charger_id) ON DELETE CASCADE
+  );
 `);
 
 console.log(`[db] SQLite listo en ${path.resolve(dbPath)}`);

@@ -8,6 +8,9 @@ const STATUS_CLASS = {
   'Cargando': 'charging',
   'Consumo bajo': 'low',
   'Disponible': 'available',
+  'Esperando tarjeta': 'waiting-card',
+  'Tarjeta leída · esperando inicio': 'waiting-start',
+  'Carga finalizada': 'available',
   'Desconectado': 'disconnected',
   'Nunca conectado': 'never',
 };

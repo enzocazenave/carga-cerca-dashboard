@@ -7,6 +7,9 @@ const STATUS_CLASS = {
   'Cargando': 'charging',
   'Consumo bajo': 'low',
   'Disponible': 'available',
+  'Esperando tarjeta': 'waiting-card',
+  'Tarjeta leída · esperando inicio': 'waiting-start',
+  'Carga finalizada': 'available',
   'Desconectado': 'disconnected',
   'Nunca conectado': 'never',
 };
@@ -102,6 +105,9 @@ async function refresh() {
   $('statusText').textContent = charger.status;
   $('statusDot').className = 'dot ' + (STATUS_CLASS[charger.status] || 'never');
   $('lastSeen').textContent = fmtAgo(charger.lastSeenAt);
+
+  $('cardItem').hidden = !charger.cardUid;
+  if (charger.cardUid) $('cardUid').textContent = charger.cardUid;
 
   const m = charger.latest;
   $('busV').textContent = m ? n(m.busVoltage) : '—';

@@ -159,14 +159,45 @@ Validaciones: `chargerId` obligatorio y único, `name` obligatorio.
 | GET    | `/api/chargers/:chargerId/measurements?limit=100` | Últimas N mediciones (orden ascendente) |
 | GET    | `/api/chargers/:chargerId/latest`                 | Última medición + estado + sesión    |
 
+### Estado del dispositivo (cargadores con NFC + relé)
+
+Para un cargador "kiosco" (pantalla + lector NFC + relé, ver
+[`esp32/cargacerca_estacion`](esp32/cargacerca_estacion)), el firmware reporta
+su propia máquina de estados. Es opcional: un ESP32 simple (solo INA219) nunca
+llama a esto y el estado se sigue infiriendo por corriente, como antes.
+
+**POST `/api/chargers/:chargerId/device-state`**
+
+```json
+{ "state": "esperando_inicio", "cardUid": "04:A3:B2:C1" }
+```
+
+- `state` debe ser uno de: `esperando_tarjeta`, `esperando_inicio`, `cargando`, `finalizada`.
+- `cardUid` es opcional (UID crudo leído por el PN532, en hex).
+- El cargador debe existir. Si no, `404`. Si `state` es inválido, `400`.
+- Respuesta OK: `201` con `{ "ok": true }`.
+- Se guarda como una sola fila "último estado" por cargador (no hay historial).
+
 ### Estado del cargador
 
-Se calcula con la última medición (valores en [`config.js`](config.js)):
+Un cargador puede llegar a su estado por dos caminos (lógica centralizada en
+[`status.js`](status.js) / [`config.js`](config.js)):
+
+**1) Reportado por el dispositivo** (si mandó un `device-state` en los últimos 20 s):
+
+| `state` reportado    | Estado mostrado                    |
+| --------------------- | ----------------------------------- |
+| `esperando_tarjeta`   | `Esperando tarjeta`                 |
+| `esperando_inicio`    | `Tarjeta leída · esperando inicio`  |
+| `cargando`            | `Cargando`                          |
+| `finalizada`          | `Carga finalizada`                  |
+
+**2) Inferido por corriente** (fallback, para un ESP32 simple sin NFC/relé, o si no mandó `device-state` reciente):
 
 | Condición                                   | Estado            |
 | ------------------------------------------- | ----------------- |
-| Nunca recibió datos                         | `Nunca conectado` |
-| Última medición hace más de 20 s            | `Desconectado`    |
+| Nunca recibió datos ni estado               | `Nunca conectado` |
+| Última señal (medición o estado) > 20 s     | `Desconectado`    |
 | `currentMa < 50`                            | `Disponible`      |
 | `50 <= currentMa < 300`                     | `Consumo bajo`    |
 | `currentMa >= 300`                          | `Cargando`        |
@@ -199,6 +230,9 @@ public/
   styles.css
 data/
   cargacerca.sqlite  # se crea sola
+esp32/
+  cargacerca_estacion/
+    cargacerca_estacion.ino  # firmware "kiosco": INA219 + PN532 (NFC) + TFT + touch + relé
 ```
 
 ### Base de datos
@@ -206,6 +240,8 @@ data/
 - `chargers`: `id`, `charger_id` (único), `name`, `location`, `description`, `created_at`, `updated_at`.
 - `measurements`: `id`, `charger_id` (FK → `chargers.charger_id`, `ON DELETE CASCADE`),
   `source_voltage`, `bus_voltage`, `shunt_voltage_mv`, `current_ma`, `power_mw`, `created_at`.
+- `device_status`: `charger_id` (PK, FK → `chargers.charger_id`, `ON DELETE CASCADE`), `state`,
+  `card_uid`, `updated_at`. Una sola fila por cargador (se pisa con el último estado reportado).
 - Índice `(charger_id, created_at DESC)` para las consultas de mediciones recientes.
 
 ---
@@ -217,16 +253,47 @@ data/
 Antes de pasar a producción real hay que incorporar:
 
 - Autenticación de **usuarios** para el panel.
-- Autenticación de **dispositivos** (token/clave por ESP32) para `POST /api/measurements`.
+- Autenticación de **dispositivos** (token/clave por ESP32) para `POST /api/measurements` y `POST /api/chargers/:chargerId/device-state`.
 - Rate limiting y validación más estricta de payloads.
+- `cardUid` hoy es solo el UID crudo que lee el PN532: **no hay alta de tarjetas válidas, ni verificación de titular, ni cobro real.** Cualquier tarjeta/llavero NFC destraba el cargador. Antes de cobrar de verdad hay que: registrar tarjetas autorizadas, validar el UID contra esa lista antes de permitir `iniciarCarga()`, y asociar cada sesión a un método de pago real.
 
 No está implementado a propósito: es un panel interno temporal.
 
 ---
 
-## Código de ejemplo para ESP32
+## Firmware "estación" (INA219 + NFC + relé + pantalla)
 
-ESP32 + INA219, POST cada 5 segundos. Configurar `WIFI_SSID`, `WIFI_PASS` y `apiUrl`.
+Si tu ESP32 tiene, además del INA219, un lector NFC (PN532), un relé y una
+pantalla táctil (ILI9341 + XPT2046) para bloquear/destrabar el cargador con
+una tarjeta, usá [`esp32/cargacerca_estacion/cargacerca_estacion.ino`](esp32/cargacerca_estacion/cargacerca_estacion.ino)
+en vez del ejemplo simple de abajo.
+
+Es la máquina de estados (esperando tarjeta → tarjeta leída → cargando →
+finalizada, con el relé como traba física) con WiFi + HTTP agregado para
+avisarle al backend cada transición:
+
+| Transición en el ESP32                        | Qué manda                                                  |
+| ---------------------------------------------- | ----------------------------------------------------------- |
+| Arranca / vuelve a `ESPERANDO_TARJETA`         | `POST device-state` → `{ state: "esperando_tarjeta" }`       |
+| Lee una tarjeta (`ESPERANDO_INICIO`)           | `POST device-state` → `{ state: "esperando_inicio", cardUid }` |
+| Tocás "Iniciar carga" (relé ON)                | `POST device-state` → `{ state: "cargando", cardUid }`       |
+| Mientras carga (cada 2 s)                      | `POST /api/measurements`                                     |
+| Se desconecta el auto / termina (relé OFF)     | `POST device-state` → `{ state: "finalizada", cardUid }`     |
+
+Configurar arriba del archivo: `WIFI_SSID`, `WIFI_PASSWORD`, `API_BASE_URL`
+(tu dominio de Railway, sin `/` al final) y `CHARGER_ID` (tiene que existir
+antes en el panel). Librerías necesarias (Arduino Library Manager):
+`Adafruit INA219`, `Adafruit GFX`, `Adafruit ILI9341`, `Adafruit PN532`,
+`XPT2046_Touchscreen`.
+
+El resto del sketch (NFC, touch, relé, pantalla) es tu lógica original, sin
+cambios de comportamiento — solo se le agregó el WiFi y los `POST`.
+
+## Código de ejemplo para ESP32 simple (solo INA219)
+
+Para un ESP32 sin NFC/relé —solo mide y manda—, POST cada 5 segundos.
+Configurar `WIFI_SSID`, `WIFI_PASS` y `apiUrl`. El estado del cargador se
+infiere por corriente (ver tabla de arriba).
 
 ```cpp
 #include <WiFi.h>

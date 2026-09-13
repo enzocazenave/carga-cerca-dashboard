@@ -42,6 +42,16 @@ const q = {
   recentMeasurements: db.prepare(
     'SELECT * FROM measurements WHERE charger_id = ? ORDER BY created_at DESC, id DESC LIMIT ?'
   ),
+
+  getDeviceState: db.prepare('SELECT * FROM device_status WHERE charger_id = ?'),
+  upsertDeviceState: db.prepare(`
+    INSERT INTO device_status (charger_id, state, card_uid, updated_at)
+    VALUES (@charger_id, @state, @card_uid, @updated_at)
+    ON CONFLICT(charger_id) DO UPDATE SET
+      state = excluded.state,
+      card_uid = excluded.card_uid,
+      updated_at = excluded.updated_at
+  `),
 };
 
 function chargerToPublic(row) {
@@ -72,7 +82,8 @@ function measurementToPublic(row) {
 /** Info derivada (estado + sesión) de un cargador. */
 function chargerRuntime(chargerId) {
   const latest = q.latestMeasurement.get(chargerId);
-  const status = computeStatus(latest);
+  const deviceState = q.getDeviceState.get(chargerId);
+  const status = computeStatus(latest, deviceState);
   const recentDesc = q.recentMeasurements.all(chargerId, config.measurements.defaultLimit);
   const recentAsc = recentDesc.slice().reverse();
   const session = computeCurrentSession(recentAsc);
@@ -213,6 +224,35 @@ app.get('/api/chargers/:chargerId/latest', (req, res) => {
     ageMs: runtime.ageMs,
     session: runtime.session,
   });
+});
+
+// ------------------------------------------------------------------
+// API - Estado físico del dispositivo (ESP32 con NFC + relé)
+// ------------------------------------------------------------------
+// Un ESP32 "kiosco" (pantalla + lector NFC + relé) reporta acá cada
+// transición de su máquina de estados. Es opcional: un ESP32 simple
+// (solo INA219) no la usa y el estado se sigue infiriendo por corriente.
+app.post('/api/chargers/:chargerId/device-state', (req, res) => {
+  const charger = q.getCharger.get(req.params.chargerId);
+  if (!charger) {
+    return res
+      .status(404)
+      .json({ error: `El cargador "${req.params.chargerId}" no existe. Crealo antes de reportar estado.` });
+  }
+
+  const { state, cardUid } = req.body || {};
+  if (!config.deviceStates.includes(state)) {
+    return res.status(400).json({ error: `state inválido. Usar uno de: ${config.deviceStates.join(', ')}` });
+  }
+
+  q.upsertDeviceState.run({
+    charger_id: charger.charger_id,
+    state,
+    card_uid: cardUid ? String(cardUid).trim() : null,
+    updated_at: nowIso(),
+  });
+
+  res.status(201).json({ ok: true });
 });
 
 // ------------------------------------------------------------------

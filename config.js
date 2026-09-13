@@ -31,8 +31,18 @@ const config = {
       available: 'Disponible',
       lowConsumption: 'Consumo bajo',
       charging: 'Cargando',
+      // Estados que reporta un ESP32 con lector NFC + relé (ver deviceStates abajo)
+      waitingCard: 'Esperando tarjeta',
+      waitingStart: 'Tarjeta leída · esperando inicio',
+      finished: 'Carga finalizada',
     },
   },
+
+  // --- Estado físico del dispositivo (ESP32 con NFC + relé) ---
+  // Estados válidos que puede reportar POST /api/chargers/:chargerId/device-state.
+  // Un ESP32 simple (sin NFC/relé) nunca manda esto y el estado se sigue
+  // infiriendo solo por corriente (ver computeStatus en status.js).
+  deviceStates: ['esperando_tarjeta', 'esperando_inicio', 'cargando', 'finalizada'],
 
   // --- Sesión de carga ---
   session: {

@@ -10,9 +10,12 @@
 
 #include <XPT2046_Touchscreen.h>
 
-// INTEGRACIÓN BACKEND: WiFi + HTTP para hablar con CargaCerca
 #include <WiFi.h>
 #include <HTTPClient.h>
+
+// =====================================================
+// CARGACERCA TERMINAL V3 - LIGHT MODE
+// =====================================================
 
 // =====================================================
 // INA219 - I2C
@@ -48,16 +51,12 @@ Adafruit_ILI9341 tft(TFT_CS, TFT_DC, TFT_RST);
 
 XPT2046_Touchscreen ts(TOUCH_CS);
 
-// Valores típicos iniciales del XPT2046.
-// Nos sirven perfectamente para prototipo.
-// Si después queremos precisión milimétrica, calibramos.
 #define TS_MIN 200
 #define TS_MAX 3900
 
 #define SCREEN_W 320
 #define SCREEN_H 240
 
-// Presión mínima para ignorar ruido
 #define TOUCH_MIN_Z 150
 
 // =====================================================
@@ -70,32 +69,23 @@ XPT2046_Touchscreen ts(TOUCH_CS);
 #define RELAY_OFF HIGH
 
 // =====================================================
-// INTEGRACIÓN BACKEND - CargaCerca
+// BACKEND
 // =====================================================
-//
-// Este cargador reporta al backend cada transición de estado
-// (esperando_tarjeta / esperando_inicio / cargando / finalizada) y,
-// mientras está CARGANDO, las mediciones del INA219 cada pocos segundos.
-//
-// El cargador (CHARGER_ID) tiene que existir de antes en el panel:
-// https://TU-DOMINIO.up.railway.app -> "+ Agregar cargador".
 
-const char* WIFI_SSID     = "TU_WIFI";
-const char* WIFI_PASSWORD = "TU_PASSWORD";
+const char* WIFI_SSID = "TU_WIFI";
+const char* WIFI_PASSWORD = "TU_PASSWORD_WIFI";
 
-// Reemplazar por tu dominio de Railway (sin "/" al final):
-const char* API_BASE_URL = "https://MI-PROYECTO.up.railway.app";
-const char* CHARGER_ID   = "CC-001";
+const char* API_BASE_URL =
+  "https://carga-cerca-dashboard-production.up.railway.app";
 
-// Cada cuánto se manda una medición mientras se está cargando.
+const char* CHARGER_ID = "CC-001";
+
 const unsigned long INTERVALO_ENVIO_MEDICION_MS = 2000;
 unsigned long ultimoEnvioMedicionMs = 0;
 
-// Throttle para no intentar reconectar WiFi en cada vuelta del loop.
 const unsigned long INTERVALO_REINTENTO_WIFI_MS = 5000;
 unsigned long ultimoIntentoWifiMs = 0;
 
-// UID (en hex) de la tarjeta/llavero que abrió la sesión actual.
 String tarjetaActualUid = "";
 
 // =====================================================
@@ -111,7 +101,7 @@ enum Estado {
 Estado estado = ESPERANDO_TARJETA;
 
 // =====================================================
-// CONTROL DE CARGA
+// CARGA
 // =====================================================
 
 const float UMBRAL_CORRIENTE_A = 0.05;
@@ -123,148 +113,633 @@ unsigned long inicioCargaMs = 0;
 unsigned long inicioSinCorrienteMs = 0;
 
 // =====================================================
+// REFRESCO UI
+// =====================================================
+
+const unsigned long INTERVALO_REFRESCO_PANTALLA_MS = 500;
+unsigned long ultimoRefrescoPantallaMs = 0;
+
+bool pantallaCargaDibujada = false;
+
+// =====================================================
+// ENERGÍA DE SESIÓN
+// =====================================================
+
+float energiaWhSesion = 0.0;
+unsigned long ultimoCalculoEnergiaMs = 0;
+
+// =====================================================
 // BOTÓN
 // =====================================================
 
-const int BTN_X = 35;
-const int BTN_Y = 125;
-const int BTN_W = 250;
-const int BTN_H = 65;
+const int BTN_X = 25;
+const int BTN_Y = 155;
+const int BTN_W = 270;
+const int BTN_H = 58;
 
-// Margen táctil adicional.
-// Visualmente el botón no cambia,
-// pero es más fácil tocarlo con el dedo.
-const int BTN_TOUCH_MARGIN = 20;
+// Más tolerante para dedo
+const int BTN_TOUCH_MARGIN = 25;
 
 // =====================================================
-// FUNCIONES DE PANTALLA
+// PALETA LIGHT
 // =====================================================
 
-void pantallaEsperando() {
+const uint16_t COLOR_BG          = 0xFFDF;
+const uint16_t COLOR_CARD        = 0xFFFF;
+const uint16_t COLOR_CARD_ALT    = 0xF7BE;
 
-  tft.fillScreen(ILI9341_BLACK);
+const uint16_t COLOR_GREEN       = 0x2587;
+const uint16_t COLOR_GREEN_LIGHT = 0xD6F3;
+const uint16_t COLOR_GREEN_DARK  = 0x1484;
 
-  tft.setTextColor(ILI9341_WHITE);
-  tft.setTextSize(3);
-  tft.setCursor(35, 40);
-  tft.println("CargaCerca");
+const uint16_t COLOR_TEXT        = 0x2124;
+const uint16_t COLOR_MUTED       = 0x7BEF;
 
-  tft.setTextSize(2);
-  tft.setCursor(45, 110);
-  tft.println("Acerca tu tarjeta");
+const uint16_t COLOR_BLUE        = 0x3D7F;
+const uint16_t COLOR_BORDER      = 0xDEFB;
+const uint16_t COLOR_WARNING     = 0xFD20;
 
-  tft.setTextSize(1);
-  tft.setTextColor(ILI9341_CYAN);
-  tft.setCursor(90, 205);
-  tft.println("Cargador bloqueado");
+// =====================================================
+// HELPERS UI
+// =====================================================
+
+void textoCentrado(
+  const String &texto,
+  int y,
+  int size,
+  uint16_t color
+) {
+  tft.setTextSize(size);
+  tft.setTextColor(color);
+
+  int ancho = texto.length() * 6 * size;
+  int x = (SCREEN_W - ancho) / 2;
+
+  if (x < 0) x = 0;
+
+  tft.setCursor(x, y);
+  tft.print(texto);
 }
 
 // -----------------------------------------------------
 
-void pantallaIniciar() {
-
-  tft.fillScreen(ILI9341_BLACK);
-
-  tft.setTextColor(ILI9341_GREEN);
-  tft.setTextSize(3);
-  tft.setCursor(35, 30);
-  tft.println("Tarjeta OK");
-
-  tft.setTextColor(ILI9341_WHITE);
+void dibujarHeader(
+  const char* estadoTexto,
+  uint16_t colorEstado
+) {
+  tft.setTextColor(COLOR_TEXT);
   tft.setTextSize(2);
-  tft.setCursor(60, 85);
-  tft.println("Listo para cargar");
+  tft.setCursor(15, 13);
+  tft.print("CargaCerca");
 
-  // Botón
+  int pillW = 92;
+  int pillH = 24;
+  int pillX = 213;
+  int pillY = 8;
+
+  tft.fillRoundRect(
+    pillX,
+    pillY,
+    pillW,
+    pillH,
+    12,
+    COLOR_CARD
+  );
+
+  tft.drawRoundRect(
+    pillX,
+    pillY,
+    pillW,
+    pillH,
+    12,
+    COLOR_BORDER
+  );
+
+  tft.fillCircle(
+    pillX + 12,
+    pillY + 12,
+    4,
+    colorEstado
+  );
+
+  tft.setTextColor(COLOR_MUTED);
+  tft.setTextSize(1);
+  tft.setCursor(
+    pillX + 23,
+    pillY + 9
+  );
+  tft.print(estadoTexto);
+
+  tft.drawFastHLine(
+    15,
+    42,
+    290,
+    COLOR_BORDER
+  );
+}
+
+// -----------------------------------------------------
+
+void dibujarIconoNFC(
+  int cx,
+  int cy,
+  uint16_t color
+) {
+  tft.drawCircle(cx, cy, 13, color);
+  tft.drawCircle(cx, cy, 23, color);
+  tft.drawCircle(cx, cy, 33, color);
+  tft.fillCircle(cx, cy, 4, color);
+}
+
+// -----------------------------------------------------
+
+void dibujarRayo(
+  int x,
+  int y,
+  uint16_t color
+) {
+  tft.fillTriangle(
+    x + 14, y,
+    x,      y + 25,
+    x + 11, y + 25,
+    color
+  );
+
+  tft.fillTriangle(
+    x + 11, y + 25,
+    x + 5,  y + 48,
+    x + 28, y + 18,
+    color
+  );
+}
+
+// =====================================================
+// PANTALLA INICIAL
+// =====================================================
+
+void pantallaEsperando() {
+  pantallaCargaDibujada = false;
+
+  tft.fillScreen(COLOR_BG);
+
+  dibujarHeader(
+    "LISTO",
+    COLOR_GREEN
+  );
+
+  tft.fillRoundRect(
+    20,
+    58,
+    280,
+    130,
+    16,
+    COLOR_CARD
+  );
+
+  tft.drawRoundRect(
+    20,
+    58,
+    280,
+    130,
+    16,
+    COLOR_BORDER
+  );
+
+  tft.fillCircle(
+    160,
+    105,
+    41,
+    COLOR_GREEN_LIGHT
+  );
+
+  dibujarIconoNFC(
+    160,
+    105,
+    COLOR_GREEN
+  );
+
+  textoCentrado(
+    "Acerca tu tarjeta",
+    148,
+    2,
+    COLOR_TEXT
+  );
+
+  textoCentrado(
+    "para comenzar",
+    171,
+    1,
+    COLOR_MUTED
+  );
+
+  tft.fillRoundRect(
+    57,
+    207,
+    206,
+    22,
+    11,
+    COLOR_CARD
+  );
+
+  tft.drawRoundRect(
+    57,
+    207,
+    206,
+    22,
+    11,
+    COLOR_BORDER
+  );
+
+  tft.fillCircle(
+    72,
+    218,
+    4,
+    COLOR_GREEN
+  );
+
+  tft.setTextColor(COLOR_MUTED);
+  tft.setTextSize(1);
+  tft.setCursor(83, 215);
+  tft.print("Cargador disponible");
+}
+
+// =====================================================
+// TARJETA DETECTADA
+// =====================================================
+
+void pantallaIniciar() {
+  pantallaCargaDibujada = false;
+
+  tft.fillScreen(COLOR_BG);
+
+  dibujarHeader(
+    "VALIDADO",
+    COLOR_GREEN
+  );
+
+  tft.fillCircle(
+    160,
+    77,
+    25,
+    COLOR_GREEN_LIGHT
+  );
+
+  tft.drawCircle(
+    160,
+    77,
+    25,
+    COLOR_GREEN
+  );
+
+  tft.drawLine(
+    149,
+    77,
+    157,
+    85,
+    COLOR_GREEN
+  );
+
+  tft.drawLine(
+    157,
+    85,
+    173,
+    68,
+    COLOR_GREEN
+  );
+
+  textoCentrado(
+    "Tarjeta detectada",
+    109,
+    2,
+    COLOR_TEXT
+  );
+
+  textoCentrado(
+    "Podes iniciar la carga",
+    132,
+    1,
+    COLOR_MUTED
+  );
+
   tft.fillRoundRect(
     BTN_X,
     BTN_Y,
     BTN_W,
     BTN_H,
-    12,
-    ILI9341_GREEN
+    14,
+    COLOR_GREEN
   );
 
-  tft.drawRoundRect(
-    BTN_X,
-    BTN_Y,
-    BTN_W,
-    BTN_H,
-    12,
-    ILI9341_WHITE
+  dibujarRayo(
+    BTN_X + 38,
+    BTN_Y + 6,
+    COLOR_BG
   );
 
-  tft.setTextColor(ILI9341_BLACK);
+  tft.setTextColor(COLOR_BG);
   tft.setTextSize(2);
-  tft.setCursor(75, 150);
+  tft.setCursor(
+    BTN_X + 85,
+    BTN_Y + 21
+  );
+
   tft.print("INICIAR CARGA");
 }
 
-// -----------------------------------------------------
+// =====================================================
+// CARGA BASE
+// =====================================================
 
-void pantallaCarga(
+void pantallaCargaBase() {
+  tft.fillScreen(COLOR_BG);
+
+  dibujarHeader(
+    "CARGANDO",
+    COLOR_GREEN
+  );
+
+  tft.fillRoundRect(
+    15,
+    55,
+    290,
+    82,
+    16,
+    COLOR_CARD
+  );
+
+  tft.drawRoundRect(
+    15,
+    55,
+    290,
+    82,
+    16,
+    COLOR_BORDER
+  );
+
+  tft.setTextColor(COLOR_MUTED);
+  tft.setTextSize(1);
+  tft.setCursor(30, 70);
+  tft.print("POTENCIA ACTUAL");
+
+  tft.fillRoundRect(
+    15,
+    147,
+    92,
+    58,
+    12,
+    COLOR_CARD
+  );
+
+  tft.fillRoundRect(
+    114,
+    147,
+    92,
+    58,
+    12,
+    COLOR_CARD
+  );
+
+  tft.fillRoundRect(
+    213,
+    147,
+    92,
+    58,
+    12,
+    COLOR_CARD
+  );
+
+  tft.drawRoundRect(
+    15,
+    147,
+    92,
+    58,
+    12,
+    COLOR_BORDER
+  );
+
+  tft.drawRoundRect(
+    114,
+    147,
+    92,
+    58,
+    12,
+    COLOR_BORDER
+  );
+
+  tft.drawRoundRect(
+    213,
+    147,
+    92,
+    58,
+    12,
+    COLOR_BORDER
+  );
+
+  tft.setTextColor(COLOR_MUTED);
+  tft.setTextSize(1);
+
+  tft.setCursor(29, 158);
+  tft.print("VOLTAJE");
+
+  tft.setCursor(126, 158);
+  tft.print("CORRIENTE");
+
+  tft.setCursor(228, 158);
+  tft.print("ENERGIA");
+
+  tft.setCursor(57, 222);
+  tft.print("Desconecta para finalizar");
+
+  pantallaCargaDibujada = true;
+}
+
+// =====================================================
+// ACTUALIZAR DATOS SIN TITILEO
+// =====================================================
+
+void actualizarDatosCarga(
   float voltaje,
   float corrienteA,
   float potenciaW
 ) {
+  if (!pantallaCargaDibujada) {
+    pantallaCargaBase();
+  }
 
-  tft.fillScreen(ILI9341_BLACK);
+  // Potencia
+  tft.fillRect(
+    27,
+    87,
+    265,
+    40,
+    COLOR_CARD
+  );
 
-  tft.setTextColor(ILI9341_GREEN);
-  tft.setTextSize(3);
-  tft.setCursor(65, 20);
-  tft.println("Cargando");
+  String potenciaTexto =
+    String(potenciaW, 2);
 
-  tft.setTextColor(ILI9341_WHITE);
+  int potenciaX =
+    135 -
+    (potenciaTexto.length() * 9);
+
+  tft.setTextColor(COLOR_TEXT);
+  tft.setTextSize(4);
+  tft.setCursor(potenciaX, 92);
+
+  tft.print(potenciaTexto);
+
   tft.setTextSize(2);
+  tft.setTextColor(COLOR_GREEN);
+  tft.print(" W");
 
-  tft.setCursor(30, 80);
-  tft.print("Voltaje:   ");
-  tft.print(voltaje, 2);
-  tft.println(" V");
+  // Voltaje
+  tft.fillRect(
+    23,
+    175,
+    77,
+    22,
+    COLOR_CARD
+  );
 
-  tft.setCursor(30, 120);
-  tft.print("Corriente: ");
-  tft.print(corrienteA, 3);
-  tft.println(" A");
+  tft.setTextColor(COLOR_TEXT);
+  tft.setTextSize(2);
+  tft.setCursor(26, 177);
 
-  tft.setCursor(30, 160);
-  tft.print("Potencia:  ");
-  tft.print(potenciaW, 2);
-  tft.println(" W");
+  tft.print(
+    voltaje,
+    2
+  );
 
   tft.setTextSize(1);
-  tft.setTextColor(ILI9341_CYAN);
-  tft.setCursor(65, 215);
-  tft.println("Desconecta para finalizar");
-}
+  tft.print(" V");
 
-// -----------------------------------------------------
+  // Corriente
+  tft.fillRect(
+    120,
+    175,
+    80,
+    22,
+    COLOR_CARD
+  );
 
-void pantallaFinalizada() {
+  tft.setTextColor(COLOR_TEXT);
+  tft.setTextSize(2);
+  tft.setCursor(122, 177);
 
-  tft.fillScreen(ILI9341_BLACK);
+  tft.print(
+    corrienteA,
+    2
+  );
 
-  tft.setTextColor(ILI9341_YELLOW);
-  tft.setTextSize(3);
+  tft.setTextSize(1);
+  tft.print(" A");
 
-  tft.setCursor(65, 70);
-  tft.println("Carga");
+  // Energía
+  tft.fillRect(
+    220,
+    175,
+    77,
+    22,
+    COLOR_CARD
+  );
 
-  tft.setCursor(40, 115);
-  tft.println("finalizada");
+  tft.setTextColor(COLOR_TEXT);
+  tft.setTextSize(2);
+  tft.setCursor(221, 177);
+
+  tft.print(
+    energiaWhSesion,
+    2
+  );
+
+  tft.setTextSize(1);
+  tft.print(" Wh");
 }
 
 // =====================================================
-// INTEGRACIÓN BACKEND - WiFi
+// FINALIZADA
+// =====================================================
+
+void pantallaFinalizada() {
+  pantallaCargaDibujada = false;
+
+  tft.fillScreen(COLOR_BG);
+
+  dibujarHeader(
+    "FINALIZADA",
+    COLOR_WARNING
+  );
+
+  tft.fillCircle(
+    160,
+    93,
+    38,
+    COLOR_GREEN_LIGHT
+  );
+
+  tft.drawCircle(
+    160,
+    93,
+    38,
+    COLOR_GREEN
+  );
+
+  tft.drawLine(
+    142,
+    93,
+    154,
+    105,
+    COLOR_GREEN
+  );
+
+  tft.drawLine(
+    154,
+    105,
+    180,
+    78,
+    COLOR_GREEN
+  );
+
+  textoCentrado(
+    "Carga finalizada",
+    147,
+    2,
+    COLOR_TEXT
+  );
+
+  tft.setTextColor(COLOR_MUTED);
+  tft.setTextSize(1);
+  tft.setCursor(93, 179);
+  tft.print("Energia: ");
+
+  tft.setTextColor(COLOR_TEXT);
+  tft.print(
+    energiaWhSesion,
+    2
+  );
+
+  tft.print(" Wh");
+
+  textoCentrado(
+    "Gracias por usar CargaCerca",
+    211,
+    1,
+    COLOR_MUTED
+  );
+}
+
+// =====================================================
+// WIFI
 // =====================================================
 
 void conectarWiFi() {
-
   Serial.print("Conectando a WiFi");
 
   WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  WiFi.begin(
+    WIFI_SSID,
+    WIFI_PASSWORD
+  );
 
   unsigned long inicio = millis();
 
@@ -278,44 +753,60 @@ void conectarWiFi() {
 
   Serial.println();
 
-  if (WiFi.status() == WL_CONNECTED) {
+  if (
+    WiFi.status() ==
+    WL_CONNECTED
+  ) {
     Serial.print("WiFi conectado. IP: ");
     Serial.println(WiFi.localIP());
   } else {
-    Serial.println("WiFi: no se pudo conectar. Se reintenta solo en el loop.");
+    Serial.println("WiFi no conectado");
   }
 }
 
-// Reintento no bloqueante: se llama en cada vuelta del loop pero
-// solo actúa cada INTERVALO_REINTENTO_WIFI_MS para no trabar la UI.
+// -----------------------------------------------------
+
 void asegurarWiFi() {
-
-  if (WiFi.status() == WL_CONNECTED) {
+  if (
+    WiFi.status() ==
+    WL_CONNECTED
+  ) {
     return;
   }
 
-  if (millis() - ultimoIntentoWifiMs < INTERVALO_REINTENTO_WIFI_MS) {
+  if (
+    millis() -
+    ultimoIntentoWifiMs <
+    INTERVALO_REINTENTO_WIFI_MS
+  ) {
     return;
   }
 
-  ultimoIntentoWifiMs = millis();
+  ultimoIntentoWifiMs =
+    millis();
 
-  Serial.println("WiFi desconectado. Reintentando...");
   WiFi.reconnect();
 }
 
 // =====================================================
-// INTEGRACIÓN BACKEND - HTTP
+// UID
 // =====================================================
 
-String uidToHex(uint8_t *uid, uint8_t len) {
-
+String uidToHex(
+  uint8_t *uid,
+  uint8_t len
+) {
   String out = "";
 
-  for (uint8_t i = 0; i < len; i++) {
+  for (
+    uint8_t i = 0;
+    i < len;
+    i++
+  ) {
     if (uid[i] < 0x10) {
       out += "0";
     }
+
     out += String(uid[i], HEX);
 
     if (i < len - 1) {
@@ -324,20 +815,22 @@ String uidToHex(uint8_t *uid, uint8_t len) {
   }
 
   out.toUpperCase();
+
   return out;
 }
 
-// -----------------------------------------------------
-// POST /api/chargers/:chargerId/device-state
-//
-// estado: "esperando_tarjeta" | "esperando_inicio" | "cargando" | "finalizada"
-// cardUid: UID de la tarjeta ("" si no aplica)
-// -----------------------------------------------------
+// =====================================================
+// BACKEND - ESTADO
+// =====================================================
 
-void enviarEstadoDispositivo(const char* estadoTexto, const String &cardUid) {
-
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("[backend] Sin WiFi, no se pudo enviar el estado");
+void enviarEstadoDispositivo(
+  const char* estadoTexto,
+  const String &cardUid
+) {
+  if (
+    WiFi.status() !=
+    WL_CONNECTED
+  ) {
     return;
   }
 
@@ -347,40 +840,47 @@ void enviarEstadoDispositivo(const char* estadoTexto, const String &cardUid) {
     CHARGER_ID +
     "/device-state";
 
-  String json = "{\"state\":\"" + String(estadoTexto) + "\"";
+  String json =
+    "{\"state\":\"" +
+    String(estadoTexto) +
+    "\"";
 
-  if (cardUid.length() > 0) {
-    json += ",\"cardUid\":\"" + cardUid + "\"";
+  if (
+    cardUid.length() > 0
+  ) {
+    json +=
+      ",\"cardUid\":\"" +
+      cardUid +
+      "\"";
   }
 
   json += "}";
 
   HTTPClient http;
+
   http.begin(url);
-  http.addHeader("Content-Type", "application/json");
+
+  http.addHeader(
+    "Content-Type",
+    "application/json"
+  );
+
   http.setTimeout(4000);
 
-  int code = http.POST(json);
+  int code =
+    http.POST(json);
 
-  if (code == 201) {
-    Serial.print("[backend] Estado enviado: ");
-    Serial.println(estadoTexto);
-  } else if (code > 0) {
-    Serial.print("[backend] Estado rechazado (HTTP ");
-    Serial.print(code);
-    Serial.print("): ");
-    Serial.println(http.getString());
-  } else {
-    Serial.print("[backend] Error de red enviando estado: ");
-    Serial.println(http.errorToString(code));
-  }
+  Serial.print(
+    "[backend] Estado HTTP "
+  );
+  Serial.println(code);
 
   http.end();
 }
 
-// -----------------------------------------------------
-// POST /api/measurements
-// -----------------------------------------------------
+// =====================================================
+// BACKEND - MEDICIÓN
+// =====================================================
 
 void enviarMedicion(
   float sourceVoltage,
@@ -389,41 +889,68 @@ void enviarMedicion(
   float currentMa,
   float powerMw
 ) {
-
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("[backend] Sin WiFi, no se pudo enviar la medición");
+  if (
+    WiFi.status() !=
+    WL_CONNECTED
+  ) {
     return;
   }
 
-  String url = String(API_BASE_URL) + "/api/measurements";
+  String url =
+    String(API_BASE_URL) +
+    "/api/measurements";
 
   String json = "{";
-  json += "\"chargerId\":\"" + String(CHARGER_ID) + "\",";
-  json += "\"sourceVoltage\":" + String(sourceVoltage, 2) + ",";
-  json += "\"busVoltage\":" + String(busVoltage, 2) + ",";
-  json += "\"shuntVoltageMv\":" + String(shuntVoltageMv, 2) + ",";
-  json += "\"currentMa\":" + String(currentMa, 2) + ",";
-  json += "\"powerMw\":" + String(powerMw, 2);
+
+  json +=
+    "\"chargerId\":\"" +
+    String(CHARGER_ID) +
+    "\",";
+
+  json +=
+    "\"sourceVoltage\":" +
+    String(sourceVoltage, 2) +
+    ",";
+
+  json +=
+    "\"busVoltage\":" +
+    String(busVoltage, 2) +
+    ",";
+
+  json +=
+    "\"shuntVoltageMv\":" +
+    String(shuntVoltageMv, 2) +
+    ",";
+
+  json +=
+    "\"currentMa\":" +
+    String(currentMa, 2) +
+    ",";
+
+  json +=
+    "\"powerMw\":" +
+    String(powerMw, 2);
+
   json += "}";
 
   HTTPClient http;
+
   http.begin(url);
-  http.addHeader("Content-Type", "application/json");
+
+  http.addHeader(
+    "Content-Type",
+    "application/json"
+  );
+
   http.setTimeout(4000);
 
-  int code = http.POST(json);
+  int code =
+    http.POST(json);
 
-  if (code == 201) {
-    Serial.println("[backend] Datos enviados. HTTP 201");
-  } else if (code > 0) {
-    Serial.print("[backend] Medición rechazada (HTTP ");
-    Serial.print(code);
-    Serial.print("): ");
-    Serial.println(http.getString());
-  } else {
-    Serial.print("[backend] Error de red enviando medición: ");
-    Serial.println(http.errorToString(code));
-  }
+  Serial.print(
+    "[backend] Medicion HTTP "
+  );
+  Serial.println(code);
 
   http.end();
 }
@@ -432,39 +959,40 @@ void enviarMedicion(
 // TOUCH
 // =====================================================
 
-bool leerTouch(int &screenX, int &screenY) {
-
-  // Aseguramos que la TFT no esté seleccionada
-  // mientras hablamos con el controlador touch.
-  digitalWrite(TFT_CS, HIGH);
+bool leerTouch(
+  int &screenX,
+  int &screenY
+) {
+  digitalWrite(
+    TFT_CS,
+    HIGH
+  );
 
   if (!ts.touched()) {
     return false;
   }
 
-  TS_Point p = ts.getPoint();
+  TS_Point p =
+    ts.getPoint();
 
-  if (p.z < TOUCH_MIN_Z) {
+  if (
+    p.z <
+    TOUCH_MIN_Z
+  ) {
     return false;
   }
 
   /*
     IMPORTANTE:
+    ts.setRotation(1) ya rota el touch.
 
-    En este módulo, con la TFT rotada en landscape,
-    normalmente los ejes del touch quedan:
-
-      raw Y -> pantalla X
-      raw X -> pantalla Y
-
-    y uno de ellos invertido.
-
-    Eso es lo que estaba causando que tocaras el botón
-    visualmente pero el software creyera que tocabas otro lugar.
+    Por eso hacemos mapping directo:
+    p.x -> screenX
+    p.y -> screenY
   */
 
   screenX = map(
-    p.y,
+    p.x,
     TS_MIN,
     TS_MAX,
     0,
@@ -472,82 +1000,116 @@ bool leerTouch(int &screenX, int &screenY) {
   );
 
   screenY = map(
-    p.x,
-    TS_MAX,
+    p.y,
     TS_MIN,
+    TS_MAX,
     0,
     SCREEN_H
   );
 
-  screenX = constrain(screenX, 0, SCREEN_W - 1);
-  screenY = constrain(screenY, 0, SCREEN_H - 1);
+  screenX = constrain(
+    screenX,
+    0,
+    SCREEN_W - 1
+  );
 
-  Serial.print("TOUCH raw(");
+  screenY = constrain(
+    screenY,
+    0,
+    SCREEN_H - 1
+  );
+
+  Serial.print("Touch RAW X=");
   Serial.print(p.x);
-  Serial.print(",");
+
+  Serial.print(" Y=");
   Serial.print(p.y);
 
-  Serial.print(") -> screen(");
+  Serial.print(" -> SCREEN X=");
   Serial.print(screenX);
-  Serial.print(",");
-  Serial.print(screenY);
-  Serial.println(")");
+
+  Serial.print(" Y=");
+  Serial.println(screenY);
 
   return true;
 }
 
-// -----------------------------------------------------
+// =====================================================
+// BOTÓN
+// =====================================================
 
 bool botonInicioPresionado() {
-
   int x;
   int y;
 
-  if (!leerTouch(x, y)) {
+  if (
+    !leerTouch(
+      x,
+      y
+    )
+  ) {
     return false;
   }
 
-  int izquierda = BTN_X - BTN_TOUCH_MARGIN;
-  int derecha   = BTN_X + BTN_W + BTN_TOUCH_MARGIN;
-
-  int arriba = BTN_Y - BTN_TOUCH_MARGIN;
-  int abajo  = BTN_Y + BTN_H + BTN_TOUCH_MARGIN;
-
   bool dentro =
-    x >= izquierda &&
-    x <= derecha &&
-    y >= arriba &&
-    y <= abajo;
+    x >=
+      BTN_X -
+      BTN_TOUCH_MARGIN &&
+
+    x <=
+      BTN_X +
+      BTN_W +
+      BTN_TOUCH_MARGIN &&
+
+    y >=
+      BTN_Y -
+      BTN_TOUCH_MARGIN &&
+
+    y <=
+      BTN_Y +
+      BTN_H +
+      BTN_TOUCH_MARGIN;
 
   if (!dentro) {
     return false;
   }
 
-  Serial.println(">>> BOTON INICIAR CARGA <<<");
+  Serial.println(
+    "BOTON INICIAR CARGA"
+  );
 
-  // Feedback visual inmediato
+  // Feedback táctil
   tft.fillRoundRect(
     BTN_X,
     BTN_Y,
     BTN_W,
     BTN_H,
-    12,
-    ILI9341_DARKGREEN
+    14,
+    COLOR_GREEN_DARK
   );
 
-  tft.setTextColor(ILI9341_WHITE);
+  tft.setTextColor(
+    ILI9341_WHITE
+  );
+
   tft.setTextSize(2);
-  tft.setCursor(75, 150);
-  tft.print("INICIAR CARGA");
 
-  // Esperamos a que el usuario retire el dedo.
-  delay(150);
+  tft.setCursor(
+    BTN_X + 85,
+    BTN_Y + 21
+  );
 
-  while (ts.touched()) {
+  tft.print(
+    "INICIAR CARGA"
+  );
+
+  delay(120);
+
+  while (
+    ts.touched()
+  ) {
     delay(10);
   }
-
-  delay(100);
 
   return true;
 }
@@ -557,30 +1119,67 @@ bool botonInicioPresionado() {
 // =====================================================
 
 void iniciarCarga() {
+  digitalWrite(
+    RELAY_PIN,
+    RELAY_ON
+  );
 
-  Serial.println("RELAY ON - CARGA INICIADA");
+  inicioCargaMs =
+    millis();
 
-  digitalWrite(RELAY_PIN, RELAY_ON);
+  inicioSinCorrienteMs =
+    0;
 
-  inicioCargaMs = millis();
-  inicioSinCorrienteMs = 0;
+  ultimoEnvioMedicionMs =
+    0;
 
-  // Forzamos que la primera medición se mande apenas haya datos,
-  // sin esperar el intervalo completo.
-  ultimoEnvioMedicionMs = 0;
+  ultimoRefrescoPantallaMs =
+    0;
 
-  enviarEstadoDispositivo("cargando", tarjetaActualUid);
+  ultimoCalculoEnergiaMs =
+    millis();
 
-  estado = CARGANDO;
+  energiaWhSesion =
+    0.0;
 
-  tft.fillScreen(ILI9341_BLACK);
+  pantallaCargaDibujada =
+    false;
 
-  tft.setTextColor(ILI9341_GREEN);
-  tft.setTextSize(3);
-  tft.setCursor(50, 90);
-  tft.println("Iniciando...");
+  enviarEstadoDispositivo(
+    "cargando",
+    tarjetaActualUid
+  );
 
-  delay(700);
+  estado =
+    CARGANDO;
+
+  tft.fillScreen(
+    COLOR_BG
+  );
+
+  dibujarRayo(
+    145,
+    65,
+    COLOR_GREEN
+  );
+
+  textoCentrado(
+    "Iniciando carga",
+    135,
+    2,
+    COLOR_TEXT
+  );
+
+  textoCentrado(
+    "Preparando conexion...",
+    168,
+    1,
+    COLOR_MUTED
+  );
+
+  delay(650);
+
+  pantallaCargaBase();
 }
 
 // =====================================================
@@ -588,25 +1187,35 @@ void iniciarCarga() {
 // =====================================================
 
 void finalizarCarga() {
+  digitalWrite(
+    RELAY_PIN,
+    RELAY_OFF
+  );
 
-  Serial.println("RELAY OFF - CARGA FINALIZADA");
-
-  digitalWrite(RELAY_PIN, RELAY_OFF);
-
-  enviarEstadoDispositivo("finalizada", tarjetaActualUid);
+  enviarEstadoDispositivo(
+    "finalizada",
+    tarjetaActualUid
+  );
 
   pantallaFinalizada();
 
-  delay(2500);
+  delay(3000);
 
-  estado = ESPERANDO_TARJETA;
+  estado =
+    ESPERANDO_TARJETA;
 
-  inicioSinCorrienteMs = 0;
-  tarjetaActualUid = "";
+  inicioSinCorrienteMs =
+    0;
+
+  tarjetaActualUid =
+    "";
 
   pantallaEsperando();
 
-  enviarEstadoDispositivo("esperando_tarjeta", "");
+  enviarEstadoDispositivo(
+    "esperando_tarjeta",
+    ""
+  );
 }
 
 // =====================================================
@@ -614,80 +1223,60 @@ void finalizarCarga() {
 // =====================================================
 
 void setup() {
-
   Serial.begin(115200);
+
   delay(1000);
 
-  Serial.println();
-  Serial.println("=======================");
-  Serial.println("      CARGACERCA");
-  Serial.println("=======================");
+  pinMode(
+    RELAY_PIN,
+    OUTPUT
+  );
 
-  // ---------------------------------------------------
-  // RELAY
-  // ---------------------------------------------------
-
-  pinMode(RELAY_PIN, OUTPUT);
-
-  // Seguridad:
-  // siempre apagado al arrancar.
-  digitalWrite(RELAY_PIN, RELAY_OFF);
-
-  // ---------------------------------------------------
-  // WiFi (backend)
-  // ---------------------------------------------------
+  digitalWrite(
+    RELAY_PIN,
+    RELAY_OFF
+  );
 
   conectarWiFi();
 
-  // ---------------------------------------------------
-  // I2C
-  // ---------------------------------------------------
-
-  Wire.begin(SDA_PIN, SCL_PIN);
-
-  if (ina219.begin()) {
-    Serial.println("INA219: OK");
-  } else {
-    Serial.println("INA219: ERROR");
-  }
-
-  // ---------------------------------------------------
-  // SPI
-  // ---------------------------------------------------
-
-  SPI.begin(
-    18, // SCK
-    19, // MISO
-    23  // MOSI
+  Wire.begin(
+    SDA_PIN,
+    SCL_PIN
   );
 
-  pinMode(TFT_CS, OUTPUT);
-  pinMode(TOUCH_CS, OUTPUT);
+  ina219.begin();
 
-  digitalWrite(TFT_CS, HIGH);
-  digitalWrite(TOUCH_CS, HIGH);
+  SPI.begin(
+    18,
+    19,
+    23
+  );
 
-  // ---------------------------------------------------
-  // TFT
-  // ---------------------------------------------------
+  pinMode(
+    TFT_CS,
+    OUTPUT
+  );
+
+  pinMode(
+    TOUCH_CS,
+    OUTPUT
+  );
+
+  digitalWrite(
+    TFT_CS,
+    HIGH
+  );
+
+  digitalWrite(
+    TOUCH_CS,
+    HIGH
+  );
 
   tft.begin();
   tft.setRotation(1);
 
-  Serial.println("TFT: OK");
-
-  // ---------------------------------------------------
-  // TOUCH
-  // ---------------------------------------------------
-
   ts.begin();
   ts.setRotation(1);
-
-  Serial.println("Touch: OK");
-
-  // ---------------------------------------------------
-  // PN532
-  // ---------------------------------------------------
 
   Serial2.begin(
     115200,
@@ -702,16 +1291,16 @@ void setup() {
     nfc.getFirmwareVersion();
 
   if (!versiondata) {
+    tft.fillScreen(
+      COLOR_BG
+    );
 
-    Serial.println("PN532: ERROR");
-
-    tft.fillScreen(ILI9341_BLACK);
-
-    tft.setTextColor(ILI9341_RED);
-    tft.setTextSize(2);
-
-    tft.setCursor(50, 100);
-    tft.println("PN532 ERROR");
+    textoCentrado(
+      "ERROR NFC",
+      100,
+      2,
+      ILI9341_RED
+    );
 
     while (1) {
       delay(1000);
@@ -720,17 +1309,15 @@ void setup() {
 
   nfc.SAMConfig();
 
-  Serial.println("PN532: OK");
-
-  // ---------------------------------------------------
-
-  estado = ESPERANDO_TARJETA;
+  estado =
+    ESPERANDO_TARJETA;
 
   pantallaEsperando();
 
-  enviarEstadoDispositivo("esperando_tarjeta", "");
-
-  Serial.println("Sistema listo");
+  enviarEstadoDispositivo(
+    "esperando_tarjeta",
+    ""
+  );
 }
 
 // =====================================================
@@ -738,16 +1325,16 @@ void setup() {
 // =====================================================
 
 void loop() {
-
-  // Reintento de WiFi no bloqueante (no afecta NFC/touch/relay).
   asegurarWiFi();
 
   // ===================================================
   // ESPERANDO TARJETA
   // ===================================================
 
-  if (estado == ESPERANDO_TARJETA) {
-
+  if (
+    estado ==
+    ESPERANDO_TARJETA
+  ) {
     uint8_t uid[7];
     uint8_t uidLength;
 
@@ -760,13 +1347,12 @@ void loop() {
       );
 
     if (success) {
+      tarjetaActualUid =
+        uidToHex(
+          uid,
+          uidLength
+        );
 
-      tarjetaActualUid = uidToHex(uid, uidLength);
-
-      Serial.print("Tarjeta detectada UID: ");
-      Serial.println(tarjetaActualUid);
-
-      // Seguimos bloqueados.
       digitalWrite(
         RELAY_PIN,
         RELAY_OFF
@@ -777,26 +1363,23 @@ void loop() {
 
       pantallaIniciar();
 
-      // Guarda el "método de pago" (por ahora, el UID crudo de la
-      // tarjeta) y avisa al panel que hay que esperar que el usuario
-      // presione "Iniciar carga" en la pantalla física.
-      enviarEstadoDispositivo("esperando_inicio", tarjetaActualUid);
+      enviarEstadoDispositivo(
+        "esperando_inicio",
+        tarjetaActualUid
+      );
 
-      // Evita releer la misma tarjeta inmediatamente.
       delay(500);
     }
   }
 
   // ===================================================
-  // ESPERANDO QUE TOQUES "INICIAR CARGA"
+  // ESPERANDO BOTÓN
   // ===================================================
 
   else if (
     estado ==
     ESPERANDO_INICIO
   ) {
-
-    // Seguimos garantizando que no pase corriente.
     digitalWrite(
       RELAY_PIN,
       RELAY_OFF
@@ -805,7 +1388,6 @@ void loop() {
     if (
       botonInicioPresionado()
     ) {
-
       iniciarCarga();
     }
   }
@@ -818,7 +1400,6 @@ void loop() {
     estado ==
     CARGANDO
   ) {
-
     float voltaje =
       ina219.getBusVoltage_V();
 
@@ -831,36 +1412,81 @@ void loop() {
     float potenciaMw =
       ina219.getPower_mW();
 
-    float corrienteA = corrienteMa / 1000.0;
-    float potenciaW  = potenciaMw / 1000.0;
-    float fuenteV    = voltaje + (shuntMv / 1000.0);
+    float corrienteA =
+      corrienteMa /
+      1000.0;
 
-    Serial.print("V=");
-    Serial.print(voltaje, 2);
+    float potenciaW =
+      potenciaMw /
+      1000.0;
 
-    Serial.print(" A=");
-    Serial.print(corrienteA, 3);
-
-    Serial.print(" W=");
-    Serial.println(potenciaW, 2);
-
-    pantallaCarga(
-      voltaje,
-      corrienteA,
-      potenciaW
-    );
+    float fuenteV =
+      voltaje +
+      (
+        shuntMv /
+        1000.0
+      );
 
     // -----------------------------------------------
-    // Reportar medición al backend (cada pocos segundos,
-    // no en cada vuelta del loop).
+    // ENERGÍA
+    // -----------------------------------------------
+
+    unsigned long ahora =
+      millis();
+
+    if (
+      ultimoCalculoEnergiaMs !=
+      0
+    ) {
+      float horas =
+        (
+          ahora -
+          ultimoCalculoEnergiaMs
+        ) /
+        3600000.0;
+
+      if (
+        potenciaW > 0
+      ) {
+        energiaWhSesion +=
+          potenciaW *
+          horas;
+      }
+    }
+
+    ultimoCalculoEnergiaMs =
+      ahora;
+
+    // -----------------------------------------------
+    // UI
     // -----------------------------------------------
 
     if (
-      millis() - ultimoEnvioMedicionMs >=
+      millis() -
+      ultimoRefrescoPantallaMs >=
+      INTERVALO_REFRESCO_PANTALLA_MS
+    ) {
+      ultimoRefrescoPantallaMs =
+        millis();
+
+      actualizarDatosCarga(
+        voltaje,
+        corrienteA,
+        potenciaW
+      );
+    }
+
+    // -----------------------------------------------
+    // BACKEND
+    // -----------------------------------------------
+
+    if (
+      millis() -
+      ultimoEnvioMedicionMs >=
       INTERVALO_ENVIO_MEDICION_MS
     ) {
-
-      ultimoEnvioMedicionMs = millis();
+      ultimoEnvioMedicionMs =
+        millis();
 
       enviarMedicion(
         fuenteV,
@@ -872,7 +1498,7 @@ void loop() {
     }
 
     // -----------------------------------------------
-    // Detectar desconexión
+    // DETECTAR DESCONEXIÓN
     // -----------------------------------------------
 
     if (
@@ -880,16 +1506,14 @@ void loop() {
       inicioCargaMs >
       GRACIA_INICIAL_MS
     ) {
-
       if (
         corrienteA <
         UMBRAL_CORRIENTE_A
       ) {
-
         if (
-          inicioSinCorrienteMs == 0
+          inicioSinCorrienteMs ==
+          0
         ) {
-
           inicioSinCorrienteMs =
             millis();
         }
@@ -899,19 +1523,15 @@ void loop() {
           inicioSinCorrienteMs >=
           TIEMPO_SIN_CARGA_MS
         ) {
-
           finalizarCarga();
         }
-      }
 
-      else {
-
-        // Hay consumo:
-        // cancelamos posible detección de desconexión.
-        inicioSinCorrienteMs = 0;
+      } else {
+        inicioSinCorrienteMs =
+          0;
       }
     }
 
-    delay(250);
+    delay(20);
   }
 }

@@ -444,6 +444,29 @@ void dibujarIconoNFC(
 }
 
 // -----------------------------------------------------
+// Ícono de celular: lo usamos en la pantalla de reposo (sin solicitud)
+// para invitar a pedir la carga desde la app, en vez del ícono de NFC
+// (que solo tiene sentido mostrar cuando ya hay alguien esperando y
+// corresponde apoyar la tarjeta).
+// -----------------------------------------------------
+
+void dibujarIconoTelefono(
+  int cx,
+  int cy,
+  uint16_t color
+) {
+  int w = 34;
+  int h = 54;
+  int x = cx - w / 2;
+  int y = cy - h / 2;
+
+  tft.drawRoundRect(x, y, w, h, 7, color);
+  tft.drawRoundRect(x + 1, y + 1, w - 2, h - 2, 6, color);
+
+  tft.fillRoundRect(cx - 8, y + h - 11, 16, 4, 2, color);
+}
+
+// -----------------------------------------------------
 
 void dibujarRayo(
   int x,
@@ -520,15 +543,18 @@ void pantallaEsperando() {
     COLOR_GREEN_LIGHT
   );
 
-  dibujarIconoNFC(
-    160,
-    105,
-    COLOR_GREEN
-  );
-
   // Si alguien pidió cargar desde la app (ver obtenerNombreSolicitudPendiente),
-  // lo saludamos por nombre en vez del mensaje genérico.
+  // lo saludamos por nombre y mostramos el ícono de NFC (ahora sí corresponde
+  // apoyar la tarjeta). Si no, el cargador está en reposo: no tiene sentido
+  // invitar a acercar la tarjeta porque el lector la va a rechazar (ver
+  // pantallaTarjetaSinSolicitud), así que invitamos a usar la app.
   if (nombreClienteActual.length() > 0) {
+    dibujarIconoNFC(
+      160,
+      105,
+      COLOR_GREEN
+    );
+
     tituloCentrado(
       "Hola, " + recortarNombre(nombreClienteActual),
       148,
@@ -543,15 +569,21 @@ void pantallaEsperando() {
       COLOR_MUTED
     );
   } else {
+    dibujarIconoTelefono(
+      160,
+      105,
+      COLOR_GREEN
+    );
+
     tituloCentrado(
-      "Acerca tu tarjeta",
+      "Pedila desde la app",
       148,
       FONT_TITLE,
       COLOR_TEXT
     );
 
     textoCentrado(
-      "para comenzar",
+      "para habilitar la tarjeta",
       171,
       1,
       COLOR_MUTED
@@ -590,6 +622,76 @@ void pantallaEsperando() {
     nombreClienteActual.length() > 0
       ? "Te estamos esperando"
       : "Cargador disponible"
+  );
+}
+
+// =====================================================
+// TARJETA SIN SOLICITUD PREVIA
+// =====================================================
+
+// Se apoyó una tarjeta pero nadie pidió cargar desde la app todavía.
+// Mostramos el aviso un rato corto (ver loop(), rama ESPERANDO_TARJETA)
+// y volvemos a pantallaEsperando() sin cambiar de estado ni tocar el relé.
+void pantallaTarjetaSinSolicitud() {
+  pantallaCargaDibujada = false;
+
+  tft.fillScreen(COLOR_BG);
+
+  dibujarHeader(
+    "BLOQUEADO",
+    COLOR_WARNING
+  );
+
+  tft.fillRoundRect(
+    20,
+    58,
+    280,
+    130,
+    16,
+    COLOR_CARD
+  );
+
+  tft.drawRoundRect(
+    20,
+    58,
+    280,
+    130,
+    16,
+    COLOR_BORDER
+  );
+
+  tft.fillCircle(
+    160,
+    100,
+    28,
+    COLOR_CARD_ALT
+  );
+
+  tft.drawCircle(
+    160,
+    100,
+    28,
+    COLOR_WARNING
+  );
+
+  tft.setFont(NULL);
+  tft.setTextColor(COLOR_WARNING);
+  tft.setTextSize(3);
+  tft.setCursor(154, 86);
+  tft.print("!");
+
+  tituloCentrado(
+    "Pedila desde la app",
+    148,
+    FONT_TITLE,
+    COLOR_TEXT
+  );
+
+  textoCentrado(
+    "Toca 'Quiero cargar mi auto'",
+    171,
+    1,
+    COLOR_MUTED
   );
 }
 
@@ -1681,28 +1783,44 @@ void loop() {
       );
 
     if (success) {
-      tarjetaActualUid =
-        uidToHex(
-          uid,
-          uidLength
+      // Solo dejamos avanzar si alguien pidió cargar desde la app. Acá
+      // consultamos fresco (no el nombreClienteActual del poll periódico,
+      // que puede tener hasta INTERVALO_CONSULTA_SOLICITUD_MS de atraso)
+      // para no rebotar a alguien que pidió la carga segundos antes de
+      // llegar a apoyar la tarjeta.
+      nombreClienteActual =
+        obtenerNombreSolicitudPendiente();
+
+      if (nombreClienteActual.length() == 0) {
+        pantallaTarjetaSinSolicitud();
+
+        delay(1800);
+
+        pantallaEsperando();
+      } else {
+        tarjetaActualUid =
+          uidToHex(
+            uid,
+            uidLength
+          );
+
+        digitalWrite(
+          RELAY_PIN,
+          RELAY_OFF
         );
 
-      digitalWrite(
-        RELAY_PIN,
-        RELAY_OFF
-      );
+        estado =
+          ESPERANDO_INICIO;
 
-      estado =
-        ESPERANDO_INICIO;
+        pantallaIniciar();
 
-      pantallaIniciar();
+        enviarEstadoDispositivo(
+          "esperando_inicio",
+          tarjetaActualUid
+        );
 
-      enviarEstadoDispositivo(
-        "esperando_inicio",
-        tarjetaActualUid
-      );
-
-      delay(500);
+        delay(500);
+      }
     }
   }
 

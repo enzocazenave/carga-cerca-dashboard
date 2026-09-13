@@ -227,6 +227,10 @@ a { color: inherit; text-decoration: none; }
   font: inherit;
 }
 .field textarea { resize: vertical; min-height: 60px; }
+.field-row { display: flex; gap: 8px; }
+.field-row input { min-width: 0; }
+.field-row .btn { flex: none; padding: 9px 12px; }
+.field-hint { color: var(--muted); font-size: 12px; margin-top: 5px; min-height: 14px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 .modal-error { color: var(--red); font-size: 13px; margin-bottom: 10px; min-height: 0; }
 

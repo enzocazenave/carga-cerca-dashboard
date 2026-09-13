@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#eef2f6" />
+  <meta name="theme-color" content="#eef2f6" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0b1120" media="(prefers-color-scheme: dark)" />
   <title>CargaCerca · Mi carga</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
@@ -15,6 +16,23 @@
       --card: #ffffff;
       --page: #eef2f6;
       --ring: rgba(15, 23, 42, 0.06);
+      --disabled-bg: #cbd5e1;
+      --disabled-fg: #64748b;
+      --banner-bg: #fee2e2;
+      --banner-fg: #b91c1c;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --ink: #f1f5f9;
+        --muted: #94a3b8;
+        --card: #1a2332;
+        --page: #0b1120;
+        --ring: rgba(0, 0, 0, 0.35);
+        --disabled-bg: #263144;
+        --disabled-fg: #64748b;
+        --banner-bg: #3f1d1d;
+        --banner-fg: #fca5a5;
+      }
     }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html, body { margin: 0; overflow-x: hidden; max-width: 100%; }
@@ -44,7 +62,7 @@
       justify-content: space-between;
       padding: 2px 4px;
     }
-    .logo { font-weight: 800; letter-spacing: -0.02em; font-size: 17px; }
+    .logo { font-weight: 800; letter-spacing: -0.02em; font-size: 17px; color: inherit; text-decoration: none; }
     .logo b { color: var(--green); }
     .live {
       display: inline-flex;
@@ -83,7 +101,7 @@
       transition: transform 0.1s ease, opacity 0.2s ease;
     }
     .request-btn:active { transform: scale(0.98); }
-    .request-btn[disabled] { background: #cbd5e1; box-shadow: none; color: #64748b; }
+    .request-btn[disabled] { background: var(--disabled-bg); box-shadow: none; color: var(--disabled-fg); }
     .request-hint { text-align: center; font-size: 13px; font-weight: 600; color: var(--muted); min-height: 16px; }
     .request-hint.mine { color: var(--green); }
 
@@ -121,6 +139,15 @@
       border: 2px solid rgba(255, 255, 255, 0.35);
       animation: pulse 2s ease-out infinite;
     }
+    .hero.charging .hero-badge::before {
+      content: "";
+      position: absolute; inset: -6px;
+      border-radius: 50%;
+      background: conic-gradient(from 0deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 65%);
+      animation: spin 1.6s linear infinite;
+      z-index: -1;
+    }
+    .hero-badge.pop { animation: pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1); }
     .hero-status { font-size: 20px; font-weight: 800; letter-spacing: -0.01em; }
     .hero-power { margin-top: 12px; display: flex; align-items: baseline; justify-content: center; gap: 6px; }
     .hero-power .num { font-size: 52px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
@@ -196,8 +223,8 @@
     .foot { text-align: center; font-size: 12px; color: var(--muted); padding-top: 4px; }
 
     .banner {
-      background: #fee2e2;
-      color: #b91c1c;
+      background: var(--banner-bg);
+      color: var(--banner-fg);
       border-radius: 16px;
       padding: 14px 16px;
       font-size: 14px;
@@ -207,15 +234,26 @@
 
     @keyframes pulse { from { transform: scale(0.9); opacity: 0.9; } to { transform: scale(1.5); opacity: 0; } }
     @keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); } 70%,100% { box-shadow: 0 0 0 8px rgba(34,197,94,0); } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pop {
+      0% { transform: scale(0.6); }
+      60% { transform: scale(1.15); }
+      100% { transform: scale(1); }
+    }
     @media (prefers-reduced-motion: reduce) {
-      .hero.charging .hero-badge::after, .live.on::before { animation: none; }
+      .hero.charging .hero-badge::after,
+      .hero.charging .hero-badge::before,
+      .hero-badge.pop,
+      .live.on::before {
+        animation: none;
+      }
     }
   </style>
 </head>
 <body>
   <div class="app">
     <div class="topbar">
-      <span class="logo">Carga<b>Cerca</b></span>
+      <a class="logo" href="/mapa" title="Ver mapa de cargadores">Carga<b>Cerca</b></a>
       <span class="live" id="live">conectando…</span>
     </div>
 

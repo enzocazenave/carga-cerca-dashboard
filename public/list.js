@@ -61,6 +61,7 @@ async function load() {
           <div class="status"><span class="dot ${cls}"></span>${esc(c.status)}</div>
           <div class="power">${powerW} W</div>
           <div class="seen">Última conexión: ${fmtAgo(c.lastSeenAt)}</div>
+          <div class="seen">${c.lat != null && c.lng != null ? '📍 En el mapa' : '⚠️ Sin coordenadas · no aparece en el mapa'}</div>
         </a>
         <div class="card-actions">
           <a class="btn link" href="/c/${encodeURIComponent(c.chargerId)}">Vista cliente</a>
@@ -107,8 +108,17 @@ function openModal(charger) {
           <input id="f-cid" value="${esc(charger?.chargerId || '')}" ${isEdit ? 'disabled' : ''} placeholder="CC-001" />
         </div>
         <div class="field">
-          <label>Ubicación</label>
-          <input id="f-loc" value="${esc(charger?.location || '')}" />
+          <label>Ubicación (texto libre)</label>
+          <input id="f-loc" value="${esc(charger?.location || '')}" placeholder="Estación de servicio YPF, Palermo" />
+        </div>
+        <div class="field">
+          <label>Coordenadas (para el mapa del cliente)</label>
+          <div class="field-row">
+            <input id="f-lat" type="number" step="any" value="${charger?.lat ?? ''}" placeholder="Latitud" />
+            <input id="f-lng" type="number" step="any" value="${charger?.lng ?? ''}" placeholder="Longitud" />
+            <button type="button" class="btn secondary" id="mUseLoc" title="Usar mi ubicación actual">📍</button>
+          </div>
+          <div class="field-hint" id="mLocHint"></div>
         </div>
         <div class="field">
           <label>Descripción</label>
@@ -127,11 +137,35 @@ function openModal(charger) {
     if (e.target.id === 'backdrop') close();
   });
 
+  document.getElementById('mUseLoc').addEventListener('click', () => {
+    const hint = document.getElementById('mLocHint');
+    if (!navigator.geolocation) {
+      hint.textContent = 'Este navegador no soporta geolocalización';
+      return;
+    }
+    hint.textContent = 'Buscando ubicación…';
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        document.getElementById('f-lat').value = pos.coords.latitude.toFixed(6);
+        document.getElementById('f-lng').value = pos.coords.longitude.toFixed(6);
+        hint.textContent = `Listo (precisión ±${Math.round(pos.coords.accuracy)} m)`;
+      },
+      (err) => {
+        hint.textContent = `No se pudo obtener la ubicación: ${err.message}`;
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  });
+
   document.getElementById('mSave').addEventListener('click', async () => {
+    const lat = document.getElementById('f-lat').value.trim();
+    const lng = document.getElementById('f-lng').value.trim();
     const body = {
       name: document.getElementById('f-name').value.trim(),
       location: document.getElementById('f-loc').value.trim(),
       description: document.getElementById('f-desc').value.trim(),
+      lat: lat === '' ? null : Number(lat),
+      lng: lng === '' ? null : Number(lng),
     };
     const errEl = document.getElementById('mErr');
     try {

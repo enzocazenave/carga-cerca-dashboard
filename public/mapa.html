@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#eef2f6" />
+  <title>CargaCerca · Mapa</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    :root {
+      --green: #16a34a;
+      --green-soft: #22c55e;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --card: #ffffff;
+      --page: #eef2f6;
+      --ring: rgba(15, 23, 42, 0.06);
+      --blue: #2563eb;
+      --amber: #d97706;
+      --red: #ef4444;
+      --gray: #94a3b8;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; height: 100%; overflow-x: hidden; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+      background: var(--page);
+      color: var(--ink);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+    }
+    [hidden] { display: none !important; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: calc(env(safe-area-inset-top) + 12px) 18px 10px;
+      flex: none;
+      z-index: 20;
+      background: var(--page);
+    }
+    .logo { font-weight: 800; letter-spacing: -0.02em; font-size: 17px; }
+    .logo b { color: var(--green); }
+    .locate-btn {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: var(--card);
+      box-shadow: 0 1px 3px var(--ring);
+      display: grid; place-items: center;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .locate-btn.active { color: var(--green); }
+
+    #map {
+      flex: 1 1 auto;
+      min-height: 0;
+      background: #dfe6ee;
+    }
+
+    .sheet {
+      flex: none;
+      background: var(--page);
+      border-radius: 22px 22px 0 0;
+      margin-top: -22px;
+      position: relative;
+      z-index: 15;
+      box-shadow: 0 -8px 24px -16px rgba(15, 23, 42, 0.25);
+      display: flex;
+      flex-direction: column;
+      max-height: 46vh;
+    }
+    .sheet-handle {
+      width: 36px; height: 4px;
+      border-radius: 2px;
+      background: #cbd5e1;
+      margin: 10px auto 6px;
+      flex: none;
+    }
+    .sheet-head {
+      padding: 0 18px 8px;
+      flex: none;
+    }
+    .sheet-head h1 { margin: 0; font-size: 17px; font-weight: 800; letter-spacing: -0.01em; }
+    .sheet-head p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+
+    .list {
+      overflow-y: auto;
+      padding: 4px 14px calc(env(safe-area-inset-bottom) + 16px);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .banner {
+      margin: 0 14px 10px;
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      border-radius: 14px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex: none;
+    }
+    .banner button {
+      border: none;
+      background: #9a3412;
+      color: #fff;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      flex: none;
+    }
+
+    .charger-row {
+      background: var(--card);
+      border-radius: 18px;
+      padding: 14px;
+      box-shadow: 0 1px 3px var(--ring);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: box-shadow 0.2s ease, transform 0.2s ease;
+    }
+    .charger-row.highlight { box-shadow: 0 0 0 2px var(--green); transform: translateY(-1px); }
+
+    .row-icon {
+      width: 42px; height: 42px;
+      border-radius: 13px;
+      display: grid; place-items: center;
+      font-size: 19px;
+      flex: none;
+    }
+
+    .row-main { min-width: 0; flex: 1 1 auto; }
+    .row-name { font-weight: 800; font-size: 14.5px; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row-status { font-size: 12.5px; color: var(--muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row-status b { color: inherit; }
+
+    .row-side { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .row-dist { font-size: 12px; font-weight: 700; color: var(--muted); }
+
+    .row-btn {
+      border: none;
+      border-radius: 12px;
+      padding: 8px 12px;
+      font-size: 12.5px;
+      font-weight: 800;
+      color: #fff;
+      background: linear-gradient(135deg, var(--green), #0d9488);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .row-btn[disabled] { background: #e2e8f0; color: #94a3b8; cursor: default; }
+    .row-btn.ghost { background: none; color: var(--blue); padding: 8px 4px; }
+
+    .empty-list { text-align: center; color: var(--muted); font-size: 13px; padding: 24px 10px; }
+
+    /* ---- Marcadores Leaflet ---- */
+    .cc-pin {
+      width: 30px; height: 30px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      display: grid; place-items: center;
+      box-shadow: 0 3px 8px rgba(15,23,42,0.35);
+      border: 2px solid #fff;
+    }
+    .cc-pin span { transform: rotate(45deg); font-size: 14px; }
+    .cc-me {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      background: var(--blue);
+      border: 3px solid #fff;
+      box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.5);
+      animation: ping-me 2s ease-out infinite;
+    }
+    @keyframes ping-me { 0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45); } 70%, 100% { box-shadow: 0 0 0 12px rgba(37, 99, 235, 0); } }
+    @media (prefers-reduced-motion: reduce) { .cc-me { animation: none; } }
+
+    .leaflet-popup-content-wrapper { border-radius: 14px; }
+    .leaflet-popup-content { margin: 10px 12px; font-family: inherit; }
+    .popup-name { font-weight: 800; font-size: 13.5px; }
+    .popup-status { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="logo">Carga<b>Cerca</b></span>
+    <button class="locate-btn" id="locateBtn" title="Centrar en mi ubicación">📍</button>
+  </div>
+
+  <div id="map"></div>
+
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <h1 id="sheetTitle">Cargadores cerca tuyo</h1>
+      <p id="sheetSub">Buscando tu ubicación…</p>
+    </div>
+    <div id="banner"></div>
+    <div class="list" id="list"></div>
+  </div>
+
+  <script src="/mapa.js"></script>
+</body>
+</html>

@@ -20,12 +20,13 @@ const q = {
   listChargers: db.prepare('SELECT * FROM chargers ORDER BY created_at DESC'),
   getCharger: db.prepare('SELECT * FROM chargers WHERE charger_id = ?'),
   insertCharger: db.prepare(`
-    INSERT INTO chargers (charger_id, name, location, description, created_at, updated_at)
-    VALUES (@charger_id, @name, @location, @description, @created_at, @updated_at)
+    INSERT INTO chargers (charger_id, name, location, description, lat, lng, created_at, updated_at)
+    VALUES (@charger_id, @name, @location, @description, @lat, @lng, @created_at, @updated_at)
   `),
   updateCharger: db.prepare(`
     UPDATE chargers
-       SET name = @name, location = @location, description = @description, updated_at = @updated_at
+       SET name = @name, location = @location, description = @description,
+           lat = @lat, lng = @lng, updated_at = @updated_at
      WHERE charger_id = @charger_id
   `),
   deleteCharger: db.prepare('DELETE FROM chargers WHERE charger_id = ?'),
@@ -79,9 +80,18 @@ function chargerToPublic(row) {
     name: row.name,
     location: row.location,
     description: row.description,
+    lat: row.lat,
+    lng: row.lng,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+/** Convierte a número finito o null (para lat/lng: campo opcional). */
+function numOrNull(v) {
+  if (v === undefined || v === null || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }
 
 function measurementToPublic(row) {
@@ -137,7 +147,7 @@ app.get('/api/chargers/:chargerId', (req, res) => {
 });
 
 app.post('/api/chargers', (req, res) => {
-  const { chargerId, name, location, description } = req.body || {};
+  const { chargerId, name, location, description, lat, lng } = req.body || {};
   if (!chargerId || !String(chargerId).trim()) {
     return res.status(400).json({ error: 'chargerId es obligatorio' });
   }
@@ -154,6 +164,8 @@ app.post('/api/chargers', (req, res) => {
     name: String(name).trim(),
     location: location ? String(location).trim() : null,
     description: description ? String(description).trim() : null,
+    lat: numOrNull(lat),
+    lng: numOrNull(lng),
     created_at: ts,
     updated_at: ts,
   });
@@ -164,7 +176,7 @@ app.put('/api/chargers/:chargerId', (req, res) => {
   const existing = q.getCharger.get(req.params.chargerId);
   if (!existing) return res.status(404).json({ error: 'Cargador no encontrado' });
 
-  const { name, location, description } = req.body || {};
+  const { name, location, description, lat, lng } = req.body || {};
   if (name !== undefined && !String(name).trim()) {
     return res.status(400).json({ error: 'name no puede quedar vacío' });
   }
@@ -175,6 +187,8 @@ app.put('/api/chargers/:chargerId', (req, res) => {
     location: location !== undefined ? (location ? String(location).trim() : null) : existing.location,
     description:
       description !== undefined ? (description ? String(description).trim() : null) : existing.description,
+    lat: lat !== undefined ? numOrNull(lat) : existing.lat,
+    lng: lng !== undefined ? numOrNull(lng) : existing.lng,
     updated_at: nowIso(),
   });
   res.json(chargerToPublic(q.getCharger.get(existing.charger_id)));
@@ -329,6 +343,7 @@ app.get('/api/config', (_req, res) => {
     pricePerKwh: config.client.pricePerKwh,
     currency: config.client.currency,
     kmPerKwh: config.client.kmPerKwh,
+    maxRequestDistanceM: config.client.maxRequestDistanceM,
   });
 });
 
@@ -339,6 +354,8 @@ app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.h
 app.get('/chargers/:chargerId', (_req, res) =>
   res.sendFile(path.join(__dirname, 'public', 'charger.html'))
 );
+// Mapa de cargadores cercanos (mobile, entrada de la app cliente)
+app.get('/mapa', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'mapa.html')));
 // Vista cliente (mobile, no técnica)
 app.get('/c/:chargerId', (_req, res) =>
   res.sendFile(path.join(__dirname, 'public', 'cliente.html'))

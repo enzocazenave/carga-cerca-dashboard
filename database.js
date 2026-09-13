@@ -24,6 +24,8 @@ db.exec(`
     name        TEXT NOT NULL,
     location    TEXT,
     description TEXT,
+    lat         REAL,
+    lng         REAL,
     created_at  TEXT NOT NULL,
     updated_at  TEXT NOT NULL
   );
@@ -64,6 +66,22 @@ db.exec(`
     FOREIGN KEY (charger_id) REFERENCES chargers (charger_id) ON DELETE CASCADE
   );
 `);
+
+// --- Migraciones ---
+// CREATE TABLE IF NOT EXISTS no agrega columnas a una tabla que ya existe
+// (ej: en Railway, sobre datos previos). lat/lng se sumaron después, así
+// que los agregamos a mano si hace falta; SQLite no soporta
+// "ADD COLUMN IF NOT EXISTS", por eso el try/catch.
+function agregarColumnaSiFalta(tabla, columna, tipo) {
+  try {
+    db.exec(`ALTER TABLE ${tabla} ADD COLUMN ${columna} ${tipo}`);
+  } catch (err) {
+    if (!/duplicate column/i.test(err.message)) throw err;
+  }
+}
+
+agregarColumnaSiFalta('chargers', 'lat', 'REAL');
+agregarColumnaSiFalta('chargers', 'lng', 'REAL');
 
 console.log(`[db] SQLite listo en ${path.resolve(dbPath)}`);
 

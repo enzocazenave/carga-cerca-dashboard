@@ -19,6 +19,7 @@ const VIEW = {
 
 let cfg = { pricePerKwh: 0, currency: 'ARS', kmPerKwh: 6 };
 let sessionStartMs = null; // para el cronómetro local entre refrescos
+let prevStatus = null; // para animar solo en la transición a "Carga finalizada"
 
 function fmtDuration(ms) {
   const t = Math.max(0, Math.floor(ms / 1000));
@@ -176,6 +177,12 @@ async function refresh() {
   $('badge').textContent = v.icon;
   $('status').textContent = v.title;
   $('sub').textContent = v.sub;
+
+  if (charger.status === 'Carga finalizada' && prevStatus !== 'Carga finalizada') {
+    $('badge').classList.add('pop');
+    setTimeout(() => $('badge').classList.remove('pop'), 600);
+  }
+  prevStatus = charger.status;
 
   actualizarRequestCard(charger);
 

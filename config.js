@@ -73,6 +73,10 @@ const config = {
     currency: process.env.PRICE_CURRENCY || 'ARS',
     // Autonomía aproximada de un auto eléctrico por kWh (para el "≈ X km cargados").
     kmPerKwh: Number(process.env.KM_PER_KWH) || 7,
+    // Radio (metros) dentro del cual el mapa deja pedir "Quiero cargar" sin
+    // avisar que hay que acercarse. Si el navegador no da ubicación, no
+    // bloqueamos: mejor dejar pedir de más que trabar el flujo por GPS.
+    maxRequestDistanceM: Number(process.env.MAX_REQUEST_DISTANCE_M) || 150,
   },
 };
 

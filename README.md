@@ -286,6 +286,19 @@ antes en el panel). Librerías necesarias (Arduino Library Manager):
 `Adafruit INA219`, `Adafruit GFX`, `Adafruit ILI9341`, `Adafruit PN532`,
 `XPT2046_Touchscreen`.
 
+**Tipografía**: la marca, los títulos y los números grandes usan las fuentes
+vectoriales `FreeSansBold9/12/18pt7b` que ya vienen dentro de
+Adafruit-GFX-Library (carpeta `Fonts/`) — no hay que instalar nada aparte.
+Las etiquetas chicas (VOLTAJE, CORRIENTE, etc.) se dejaron con la fuente
+clásica de 5x7 píxeles a propósito: a ese tamaño se ve bien y es la forma
+más segura de que el texto entre en recuadros chicos.
+
+**Touch**: el botón "Iniciar carga" no valida en qué parte de la pantalla
+tocaste — cualquier toque durante esa vista arranca la carga. Es a propósito
+(ver commit "hacer touch insensible a calibración"): el mapeo raw→pantalla
+del XPT2046 varía de módulo a módulo y no vale la pena calibrarlo a mano
+para un solo botón.
+
 El resto del sketch (NFC, touch, relé, pantalla) es tu lógica original, sin
 cambios de comportamiento — solo se le agregó el WiFi y los `POST`.
 

@@ -13,6 +13,19 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 
+// Fuentes vectoriales: vienen incluidas con Adafruit-GFX-Library
+// (carpeta Fonts/), no hace falta instalar ninguna librería nueva.
+// Las usamos en la marca, los títulos y los números grandes, que
+// con la fuente clásica a tamaño 2-4 se veían "pixeladas".
+#include <Fonts/FreeSansBold9pt7b.h>
+#include <Fonts/FreeSansBold12pt7b.h>
+#include <Fonts/FreeSansBold18pt7b.h>
+
+#define FONT_BRAND &FreeSansBold9pt7b   // "CargaCerca" en el header
+#define FONT_TITLE &FreeSansBold12pt7b  // Títulos de pantalla y botón
+#define FONT_BIG   &FreeSansBold18pt7b  // Número grande de potencia
+#define FONT_VALUE &FreeSansBold9pt7b   // Voltaje / Corriente / Energía al cargar
+
 // =====================================================
 // CARGACERCA TERMINAL V3 - LIGHT MODE
 // =====================================================
@@ -162,12 +175,19 @@ const uint16_t COLOR_WARNING     = 0xFD20;
 // HELPERS UI
 // =====================================================
 
+// Texto centrado con la fuente CLÁSICA de Adafruit_GFX (pixelada, tamaño
+// en múltiplos enteros). La seguimos usando para textos chicos/secundarios
+// (subtítulos, etiquetas): a tamaño 1 se ve bien y no hay riesgo de que un
+// texto grande no entre en su recuadro.
 void textoCentrado(
   const String &texto,
   int y,
   int size,
   uint16_t color
 ) {
+  // Por si el dibujo anterior dejó puesta una fuente vectorial.
+  tft.setFont(NULL);
+
   tft.setTextSize(size);
   tft.setTextColor(color);
 
@@ -181,15 +201,178 @@ void textoCentrado(
 }
 
 // -----------------------------------------------------
+// Helpers para las fuentes vectoriales (FreeSans*), usadas en la marca,
+// los títulos y los números grandes.
+//
+// A diferencia de la fuente clásica, acá tft.setCursor(x,y) apoya la
+// BASE del texto en "y", no la esquina superior izquierda. Con
+// getTextBounds() medimos cuánto se desvía el dibujo real respecto de
+// ese punto y así podemos seguir pensando "y = borde superior", como
+// con la fuente clásica, sin tener que recalcular cada posición a mano.
+// -----------------------------------------------------
+
+void tituloIzquierda(
+  const String &texto,
+  int x,
+  int yArriba,
+  const GFXfont *font,
+  uint16_t color
+) {
+  tft.setFont(font);
+  tft.setTextColor(color);
+
+  int16_t x1, y1;
+  uint16_t w, h;
+
+  tft.getTextBounds(
+    texto,
+    0,
+    0,
+    &x1,
+    &y1,
+    &w,
+    &h
+  );
+
+  tft.setCursor(
+    x - x1,
+    yArriba - y1
+  );
+
+  tft.print(texto);
+}
+
+// -----------------------------------------------------
+
+void tituloCentrado(
+  const String &texto,
+  int yArriba,
+  const GFXfont *font,
+  uint16_t color
+) {
+  tft.setFont(font);
+  tft.setTextColor(color);
+
+  int16_t x1, y1;
+  uint16_t w, h;
+
+  tft.getTextBounds(
+    texto,
+    0,
+    0,
+    &x1,
+    &y1,
+    &w,
+    &h
+  );
+
+  int x = (SCREEN_W - (int)w) / 2 - x1;
+
+  tft.setCursor(
+    x,
+    yArriba - y1
+  );
+
+  tft.print(texto);
+}
+
+// -----------------------------------------------------
+// Centra un texto de un solo color dentro de un rectángulo
+// (ancho Y alto). La usamos para el label del botón.
+// -----------------------------------------------------
+
+void tituloCentradoEnCaja(
+  const String &texto,
+  int rectX,
+  int rectY,
+  int rectW,
+  int rectH,
+  const GFXfont *font,
+  uint16_t color
+) {
+  tft.setFont(font);
+  tft.setTextColor(color);
+
+  int16_t x1, y1;
+  uint16_t w, h;
+
+  tft.getTextBounds(
+    texto,
+    0,
+    0,
+    &x1,
+    &y1,
+    &w,
+    &h
+  );
+
+  int cx = rectX + ((int)rectW - (int)w) / 2 - x1;
+  int cy = rectY + ((int)rectH - (int)h) / 2 - y1;
+
+  tft.setCursor(cx, cy);
+  tft.print(texto);
+}
+
+// -----------------------------------------------------
+// Centra "valor" + "unidad" (con colores distintos) dentro de un
+// rectángulo. La usamos para los números de potencia/voltaje/corriente/
+// energía: medimos el string COMPLETO para centrarlo bien, pero lo
+// imprimimos en dos tandas para poder pintar la unidad de otro color.
+// -----------------------------------------------------
+
+void valorConUnidadCentrado(
+  const String &valor,
+  const String &unidad,
+  int rectX,
+  int rectY,
+  int rectW,
+  int rectH,
+  const GFXfont *font,
+  uint16_t colorValor,
+  uint16_t colorUnidad
+) {
+  String completo = valor + unidad;
+
+  tft.setFont(font);
+
+  int16_t x1, y1;
+  uint16_t w, h;
+
+  tft.getTextBounds(
+    completo,
+    0,
+    0,
+    &x1,
+    &y1,
+    &w,
+    &h
+  );
+
+  int cx = rectX + ((int)rectW - (int)w) / 2 - x1;
+  int cy = rectY + ((int)rectH - (int)h) / 2 - y1;
+
+  tft.setCursor(cx, cy);
+
+  tft.setTextColor(colorValor);
+  tft.print(valor);
+
+  tft.setTextColor(colorUnidad);
+  tft.print(unidad);
+}
+
+// -----------------------------------------------------
 
 void dibujarHeader(
   const char* estadoTexto,
   uint16_t colorEstado
 ) {
-  tft.setTextColor(COLOR_TEXT);
-  tft.setTextSize(2);
-  tft.setCursor(15, 13);
-  tft.print("CargaCerca");
+  tituloIzquierda(
+    "CargaCerca",
+    15,
+    12,
+    FONT_BRAND,
+    COLOR_TEXT
+  );
 
   int pillW = 92;
   int pillH = 24;
@@ -220,6 +403,9 @@ void dibujarHeader(
     4,
     colorEstado
   );
+
+  // Volvemos a la fuente clásica para el texto chico del pill.
+  tft.setFont(NULL);
 
   tft.setTextColor(COLOR_MUTED);
   tft.setTextSize(1);
@@ -317,10 +503,10 @@ void pantallaEsperando() {
     COLOR_GREEN
   );
 
-  textoCentrado(
+  tituloCentrado(
     "Acerca tu tarjeta",
     148,
-    2,
+    FONT_TITLE,
     COLOR_TEXT
   );
 
@@ -406,10 +592,10 @@ void pantallaIniciar() {
     COLOR_GREEN
   );
 
-  textoCentrado(
+  tituloCentrado(
     "Tarjeta detectada",
     109,
-    2,
+    FONT_TITLE,
     COLOR_TEXT
   );
 
@@ -435,14 +621,17 @@ void pantallaIniciar() {
     COLOR_BG
   );
 
-  tft.setTextColor(COLOR_BG);
-  tft.setTextSize(2);
-  tft.setCursor(
-    BTN_X + 85,
-    BTN_Y + 21
+  // Label centrado en el espacio libre a la derecha del rayo (para no
+  // superponerse con el ícono).
+  tituloCentradoEnCaja(
+    "INICIAR CARGA",
+    BTN_X + 75,
+    BTN_Y,
+    BTN_W - 75 - 10,
+    BTN_H,
+    FONT_TITLE,
+    COLOR_BG
   );
-
-  tft.print("INICIAR CARGA");
 }
 
 // =====================================================
@@ -565,7 +754,7 @@ void actualizarDatosCarga(
     pantallaCargaBase();
   }
 
-  // Potencia
+  // Potencia (número grande, fuente moderna)
   tft.fillRect(
     27,
     87,
@@ -574,22 +763,17 @@ void actualizarDatosCarga(
     COLOR_CARD
   );
 
-  String potenciaTexto =
-    String(potenciaW, 2);
-
-  int potenciaX =
-    135 -
-    (potenciaTexto.length() * 9);
-
-  tft.setTextColor(COLOR_TEXT);
-  tft.setTextSize(4);
-  tft.setCursor(potenciaX, 92);
-
-  tft.print(potenciaTexto);
-
-  tft.setTextSize(2);
-  tft.setTextColor(COLOR_GREEN);
-  tft.print(" W");
+  valorConUnidadCentrado(
+    String(potenciaW, 2),
+    " W",
+    27,
+    87,
+    265,
+    40,
+    FONT_BIG,
+    COLOR_TEXT,
+    COLOR_GREEN
+  );
 
   // Voltaje
   tft.fillRect(
@@ -600,17 +784,17 @@ void actualizarDatosCarga(
     COLOR_CARD
   );
 
-  tft.setTextColor(COLOR_TEXT);
-  tft.setTextSize(2);
-  tft.setCursor(26, 177);
-
-  tft.print(
-    voltaje,
-    2
+  valorConUnidadCentrado(
+    String(voltaje, 2),
+    " V",
+    23,
+    175,
+    77,
+    22,
+    FONT_VALUE,
+    COLOR_TEXT,
+    COLOR_TEXT
   );
-
-  tft.setTextSize(1);
-  tft.print(" V");
 
   // Corriente
   tft.fillRect(
@@ -621,17 +805,17 @@ void actualizarDatosCarga(
     COLOR_CARD
   );
 
-  tft.setTextColor(COLOR_TEXT);
-  tft.setTextSize(2);
-  tft.setCursor(122, 177);
-
-  tft.print(
-    corrienteA,
-    2
+  valorConUnidadCentrado(
+    String(corrienteA, 2),
+    " A",
+    120,
+    175,
+    80,
+    22,
+    FONT_VALUE,
+    COLOR_TEXT,
+    COLOR_TEXT
   );
-
-  tft.setTextSize(1);
-  tft.print(" A");
 
   // Energía
   tft.fillRect(
@@ -642,17 +826,17 @@ void actualizarDatosCarga(
     COLOR_CARD
   );
 
-  tft.setTextColor(COLOR_TEXT);
-  tft.setTextSize(2);
-  tft.setCursor(221, 177);
-
-  tft.print(
-    energiaWhSesion,
-    2
+  valorConUnidadCentrado(
+    String(energiaWhSesion, 2),
+    " Wh",
+    220,
+    175,
+    77,
+    22,
+    FONT_VALUE,
+    COLOR_TEXT,
+    COLOR_TEXT
   );
-
-  tft.setTextSize(1);
-  tft.print(" Wh");
 }
 
 // =====================================================
@@ -699,12 +883,15 @@ void pantallaFinalizada() {
     COLOR_GREEN
   );
 
-  textoCentrado(
+  tituloCentrado(
     "Carga finalizada",
     147,
-    2,
+    FONT_TITLE,
     COLOR_TEXT
   );
+
+  // Volvemos a la fuente clásica para esta línea chica.
+  tft.setFont(NULL);
 
   tft.setTextColor(COLOR_MUTED);
   tft.setTextSize(1);
@@ -1070,19 +1257,14 @@ bool botonInicioPresionado() {
     COLOR_GREEN_DARK
   );
 
-  tft.setTextColor(
+  tituloCentradoEnCaja(
+    "INICIAR CARGA",
+    BTN_X + 75,
+    BTN_Y,
+    BTN_W - 75 - 10,
+    BTN_H,
+    FONT_TITLE,
     ILI9341_WHITE
-  );
-
-  tft.setTextSize(2);
-
-  tft.setCursor(
-    BTN_X + 85,
-    BTN_Y + 21
-  );
-
-  tft.print(
-    "INICIAR CARGA"
   );
 
   delay(120);
@@ -1145,10 +1327,10 @@ void iniciarCarga() {
     COLOR_GREEN
   );
 
-  textoCentrado(
+  tituloCentrado(
     "Iniciando carga",
     135,
-    2,
+    FONT_TITLE,
     COLOR_TEXT
   );
 
@@ -1277,10 +1459,10 @@ void setup() {
       COLOR_BG
     );
 
-    textoCentrado(
+    tituloCentrado(
       "ERROR NFC",
       100,
-      2,
+      FONT_TITLE,
       ILI9341_RED
     );
 

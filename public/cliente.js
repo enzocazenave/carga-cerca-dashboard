@@ -78,11 +78,76 @@ grad.addColorStop(0, 'rgba(22,163,74,0.28)');
 grad.addColorStop(1, 'rgba(22,163,74,0)');
 chart.data.datasets[0].backgroundColor = grad;
 
-async function api(path) {
-  const res = await fetch(path);
+async function api(path, opts) {
+  const res = await fetch(path, opts);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
   return data;
+}
+
+// ---- Quiero cargar mi auto ----
+// El nombre se pide una sola vez y queda en este navegador: así la próxima
+// visita ya no pregunta y el flujo se siente instantáneo.
+const NAME_KEY = 'cc_client_name';
+const getMyName = () => (localStorage.getItem(NAME_KEY) || '').trim() || null;
+
+async function pedirCarga() {
+  let name = getMyName();
+  if (!name) {
+    name = (prompt('¿Cómo te llamás? Así te saludamos en el cargador.') || '').trim();
+    if (!name) return;
+    localStorage.setItem(NAME_KEY, name);
+  }
+
+  const btn = $('requestBtn');
+  btn.disabled = true;
+  btn.textContent = 'Enviando…';
+  try {
+    await api(`/api/chargers/${encodeURIComponent(chargerId)}/request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    await refresh();
+  } catch (e) {
+    alert(e.message);
+    btn.disabled = false;
+    btn.textContent = '🚗 Quiero cargar mi auto';
+  }
+}
+
+$('requestBtn').addEventListener('click', pedirCarga);
+
+function actualizarRequestCard(charger) {
+  const card = $('requestCard');
+  const btn = $('requestBtn');
+  const hint = $('requestHint');
+  const pr = charger.pendingRequest;
+  const myName = getMyName();
+
+  if (charger.status === 'Cargando') {
+    card.hidden = true;
+    return;
+  }
+  card.hidden = false;
+
+  if (pr && pr.name) {
+    btn.disabled = true;
+    if (myName && pr.name === myName) {
+      btn.textContent = 'Solicitud enviada ✅';
+      hint.textContent = 'Acercate y apoyá tu tarjeta en el cargador';
+      hint.className = 'request-hint mine';
+    } else {
+      btn.textContent = 'Cargador reservado';
+      hint.textContent = `${pr.name} está por cargar acá`;
+      hint.className = 'request-hint';
+    }
+  } else {
+    btn.disabled = false;
+    btn.textContent = '🚗 Quiero cargar mi auto';
+    hint.textContent = '';
+    hint.className = 'request-hint';
+  }
 }
 
 async function loadConfig() {
@@ -111,6 +176,20 @@ async function refresh() {
   $('badge').textContent = v.icon;
   $('status').textContent = v.title;
   $('sub').textContent = v.sub;
+
+  actualizarRequestCard(charger);
+
+  // Si la solicitud pendiente es la mía, personalizamos el mensaje del
+  // cargador (lo mismo que ve en su pantalla física la ESP32).
+  const myName = getMyName();
+  const pr = charger.pendingRequest;
+  if (pr && myName && pr.name === myName) {
+    if (charger.status === 'Esperando tarjeta') {
+      $('sub').textContent = `¡Hola, ${myName}! Acercá tu tarjeta al cargador.`;
+    } else if (charger.status === 'Tarjeta leída · esperando inicio') {
+      $('sub').textContent = `¡Hola, ${myName}! Tocá "Iniciar carga" en la pantalla.`;
+    }
+  }
 
   const m = charger.latest;
   const powerKw = m && m.powerMw != null ? m.powerMw / 1e6 : 0;

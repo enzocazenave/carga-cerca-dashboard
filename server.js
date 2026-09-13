@@ -52,7 +52,25 @@ const q = {
       card_uid = excluded.card_uid,
       updated_at = excluded.updated_at
   `),
+
+  getChargeRequest: db.prepare('SELECT * FROM charge_requests WHERE charger_id = ?'),
+  upsertChargeRequest: db.prepare(`
+    INSERT INTO charge_requests (charger_id, client_name, requested_at)
+    VALUES (@charger_id, @client_name, @requested_at)
+    ON CONFLICT(charger_id) DO UPDATE SET
+      client_name = excluded.client_name,
+      requested_at = excluded.requested_at
+  `),
+  deleteChargeRequest: db.prepare('DELETE FROM charge_requests WHERE charger_id = ?'),
 };
+
+/** Solicitud de carga vigente para un cargador (o null si no hay o venció). */
+function pendingRequestFor(chargerId, now = Date.now()) {
+  const row = q.getChargeRequest.get(chargerId);
+  if (!row) return null;
+  if (now - Date.parse(row.requested_at) > config.request.expireAfterMs) return null;
+  return { name: row.client_name, requestedAt: row.requested_at };
+}
 
 function chargerToPublic(row) {
   return {
@@ -91,6 +109,7 @@ function chargerRuntime(chargerId) {
     ...status,
     latest: latest ? measurementToPublic(latest) : null,
     session,
+    pendingRequest: pendingRequestFor(chargerId),
   };
 }
 
@@ -252,7 +271,54 @@ app.post('/api/chargers/:chargerId/device-state', (req, res) => {
     updated_at: nowIso(),
   });
 
+  // La carga terminó: borramos la solicitud pendiente para que la pantalla
+  // del cargador y la vista cliente dejen de mostrar el nombre del cliente
+  // anterior y quede libre para el que sigue.
+  if (state === 'finalizada') {
+    q.deleteChargeRequest.run(charger.charger_id);
+  }
+
   res.status(201).json({ ok: true });
+});
+
+// ------------------------------------------------------------------
+// API - Solicitud de carga ("Quiero cargar mi auto" desde la app cliente)
+// ------------------------------------------------------------------
+// El cliente pide cargar en un cargador puntual mandando su nombre. La
+// ESP32 del cargador consulta este mismo endpoint (GET) mientras espera
+// tarjeta, para saludar por nombre en la pantalla física.
+app.post('/api/chargers/:chargerId/request', (req, res) => {
+  const charger = q.getCharger.get(req.params.chargerId);
+  if (!charger) {
+    return res.status(404).json({ error: `El cargador "${req.params.chargerId}" no existe.` });
+  }
+
+  const { name } = req.body || {};
+  const clean = String(name || '')
+    .trim()
+    .replace(/["\\]/g, '') // fuera comillas/backslashes: la ESP32 parsea el JSON a mano
+    .slice(0, config.request.maxNameLength);
+
+  if (!clean) {
+    return res.status(400).json({ error: 'name es obligatorio' });
+  }
+
+  q.upsertChargeRequest.run({
+    charger_id: charger.charger_id,
+    client_name: clean,
+    requested_at: nowIso(),
+  });
+
+  res.status(201).json({ ok: true, name: clean });
+});
+
+app.get('/api/chargers/:chargerId/request', (req, res) => {
+  const charger = q.getCharger.get(req.params.chargerId);
+  if (!charger) {
+    return res.status(404).json({ error: `El cargador "${req.params.chargerId}" no existe.` });
+  }
+  const pending = pendingRequestFor(charger.charger_id);
+  res.json(pending || { name: null, requestedAt: null });
 });
 
 // ------------------------------------------------------------------

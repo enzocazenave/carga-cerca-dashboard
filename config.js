@@ -44,6 +44,14 @@ const config = {
   // infiriendo solo por corriente (ver computeStatus en status.js).
   deviceStates: ['esperando_tarjeta', 'esperando_inicio', 'cargando', 'finalizada'],
 
+  // --- Solicitud de carga (el cliente pide cargar desde la app) ---
+  // Vive un tiempo acotado: si nadie se acerca a apoyar la tarjeta, se
+  // considera vencida y la ESP32/vista cliente dejan de mostrar el nombre.
+  request: {
+    expireAfterMs: 3 * 60 * 1000, // 3 minutos para acercarse y apoyar la tarjeta
+    maxNameLength: 40,
+  },
+
   // --- Sesión de carga ---
   session: {
     // Una sesión empieza cuando la corriente pasa de < startThresholdMa a >= startThresholdMa

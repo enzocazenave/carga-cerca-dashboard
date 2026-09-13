@@ -52,6 +52,17 @@ db.exec(`
     updated_at  TEXT NOT NULL,
     FOREIGN KEY (charger_id) REFERENCES chargers (charger_id) ON DELETE CASCADE
   );
+
+  -- Solicitud de carga: el cliente toca "Quiero cargar mi auto" en la vista
+  -- cliente y queda acá su nombre para que la ESP32 del cargador lo muestre
+  -- en pantalla ("Hola, Enzo"). Una fila por cargador (la última pisa a la
+  -- anterior); se borra al finalizar la carga o vence sola (ver config.request).
+  CREATE TABLE IF NOT EXISTS charge_requests (
+    charger_id   TEXT PRIMARY KEY,
+    client_name  TEXT NOT NULL,
+    requested_at TEXT NOT NULL,
+    FOREIGN KEY (charger_id) REFERENCES chargers (charger_id) ON DELETE CASCADE
+  );
 `);
 
 console.log(`[db] SQLite listo en ${path.resolve(dbPath)}`);

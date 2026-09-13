@@ -101,6 +101,13 @@ unsigned long ultimoIntentoWifiMs = 0;
 
 String tarjetaActualUid = "";
 
+// Nombre del cliente que pidió cargar desde la app (GET /request). Vive
+// desde que aparece hasta que termina la carga (ver finalizarCarga()).
+String nombreClienteActual = "";
+
+const unsigned long INTERVALO_CONSULTA_SOLICITUD_MS = 3000;
+unsigned long ultimaConsultaSolicitudMs = 0;
+
 // =====================================================
 // ESTADOS
 // =====================================================
@@ -458,6 +465,22 @@ void dibujarRayo(
   );
 }
 
+// -----------------------------------------------------
+// Recorta nombres largos para que entren en los títulos de la pantalla
+// (fuente vectorial, no monoespaciada: mejor curarlo acá que arriesgar
+// texto cortado o corrido fuera del recuadro).
+// -----------------------------------------------------
+
+String recortarNombre(const String &nombre) {
+  const int LARGO_MAX = 20;
+
+  if (nombre.length() <= LARGO_MAX) {
+    return nombre;
+  }
+
+  return nombre.substring(0, LARGO_MAX - 1) + "...";
+}
+
 // =====================================================
 // PANTALLA INICIAL
 // =====================================================
@@ -503,19 +526,37 @@ void pantallaEsperando() {
     COLOR_GREEN
   );
 
-  tituloCentrado(
-    "Acerca tu tarjeta",
-    148,
-    FONT_TITLE,
-    COLOR_TEXT
-  );
+  // Si alguien pidió cargar desde la app (ver obtenerNombreSolicitudPendiente),
+  // lo saludamos por nombre en vez del mensaje genérico.
+  if (nombreClienteActual.length() > 0) {
+    tituloCentrado(
+      "Hola, " + recortarNombre(nombreClienteActual),
+      148,
+      FONT_TITLE,
+      COLOR_TEXT
+    );
 
-  textoCentrado(
-    "para comenzar",
-    171,
-    1,
-    COLOR_MUTED
-  );
+    textoCentrado(
+      "apoya tu tarjeta para continuar",
+      171,
+      1,
+      COLOR_MUTED
+    );
+  } else {
+    tituloCentrado(
+      "Acerca tu tarjeta",
+      148,
+      FONT_TITLE,
+      COLOR_TEXT
+    );
+
+    textoCentrado(
+      "para comenzar",
+      171,
+      1,
+      COLOR_MUTED
+    );
+  }
 
   tft.fillRoundRect(
     57,
@@ -545,7 +586,11 @@ void pantallaEsperando() {
   tft.setTextColor(COLOR_MUTED);
   tft.setTextSize(1);
   tft.setCursor(83, 215);
-  tft.print("Cargador disponible");
+  tft.print(
+    nombreClienteActual.length() > 0
+      ? "Te estamos esperando"
+      : "Cargador disponible"
+  );
 }
 
 // =====================================================
@@ -599,12 +644,21 @@ void pantallaIniciar() {
     COLOR_TEXT
   );
 
-  textoCentrado(
-    "Podes iniciar la carga",
-    132,
-    1,
-    COLOR_MUTED
-  );
+  if (nombreClienteActual.length() > 0) {
+    textoCentrado(
+      "Hola " + recortarNombre(nombreClienteActual) + ", inicia la carga",
+      132,
+      1,
+      COLOR_MUTED
+    );
+  } else {
+    textoCentrado(
+      "Podes iniciar la carga",
+      132,
+      1,
+      COLOR_MUTED
+    );
+  }
 
   tft.fillRoundRect(
     BTN_X,
@@ -906,12 +960,21 @@ void pantallaFinalizada() {
 
   tft.print(" Wh");
 
-  textoCentrado(
-    "Gracias por usar CargaCerca",
-    211,
-    1,
-    COLOR_MUTED
-  );
+  if (nombreClienteActual.length() > 0) {
+    textoCentrado(
+      "Gracias por cargar, " + recortarNombre(nombreClienteActual) + "!",
+      211,
+      1,
+      COLOR_MUTED
+    );
+  } else {
+    textoCentrado(
+      "Gracias por usar CargaCerca",
+      211,
+      1,
+      COLOR_MUTED
+    );
+  }
 }
 
 // =====================================================
@@ -1139,6 +1202,80 @@ void enviarMedicion(
   Serial.println(code);
 
   http.end();
+}
+
+// =====================================================
+// BACKEND - SOLICITUD DE CARGA
+// =====================================================
+
+// Parser mínimo: busca "campo":"valor" en un JSON plano (sin objetos ni
+// arrays anidados, que es todo lo que manda nuestro backend). Alcanza
+// para no sumar una librería de JSON solo para leer un string.
+// Si el campo viene como null (sin comillas) devuelve "".
+String extraerCampoStringJSON(
+  const String &json,
+  const String &campo
+) {
+  String buscado = "\"" + campo + "\":\"";
+
+  int inicio = json.indexOf(buscado);
+
+  if (inicio == -1) {
+    return "";
+  }
+
+  inicio += buscado.length();
+
+  int fin = json.indexOf('"', inicio);
+
+  if (fin == -1) {
+    return "";
+  }
+
+  return json.substring(inicio, fin);
+}
+
+// -----------------------------------------------------
+
+// Consulta si hay un cliente esperando en este cargador (lo pidió desde
+// la app con "Quiero cargar mi auto"). Devuelve su nombre, o "" si no
+// hay nadie esperando (o hubo error de red).
+String obtenerNombreSolicitudPendiente() {
+  if (
+    WiFi.status() !=
+    WL_CONNECTED
+  ) {
+    return "";
+  }
+
+  String url =
+    String(API_BASE_URL) +
+    "/api/chargers/" +
+    CHARGER_ID +
+    "/request";
+
+  HTTPClient http;
+
+  http.begin(url);
+
+  http.setTimeout(4000);
+
+  int code =
+    http.GET();
+
+  String nombre = "";
+
+  if (code == 200) {
+    nombre =
+      extraerCampoStringJSON(
+        http.getString(),
+        "name"
+      );
+  }
+
+  http.end();
+
+  return nombre;
 }
 
 // =====================================================
@@ -1374,6 +1511,14 @@ void finalizarCarga() {
   tarjetaActualUid =
     "";
 
+  // El backend ya borró la solicitud (ver POST device-state "finalizada"),
+  // así que el próximo cliente arranca sin ver el nombre del anterior.
+  nombreClienteActual =
+    "";
+
+  ultimaConsultaSolicitudMs =
+    0;
+
   pantallaEsperando();
 
   enviarEstadoDispositivo(
@@ -1499,6 +1644,31 @@ void loop() {
     estado ==
     ESPERANDO_TARJETA
   ) {
+    // Cada pocos segundos preguntamos si alguien pidió cargar desde la
+    // app, para saludarlo por nombre. Solo mientras esperamos tarjeta:
+    // una vez que alguien la apoya, el nombre ya quedó fijado.
+    if (
+      millis() -
+      ultimaConsultaSolicitudMs >=
+      INTERVALO_CONSULTA_SOLICITUD_MS
+    ) {
+      ultimaConsultaSolicitudMs =
+        millis();
+
+      String nombre =
+        obtenerNombreSolicitudPendiente();
+
+      if (
+        nombre !=
+        nombreClienteActual
+      ) {
+        nombreClienteActual =
+          nombre;
+
+        pantallaEsperando();
+      }
+    }
+
     uint8_t uid[7];
     uint8_t uidLength;
 

@@ -67,6 +67,26 @@
     .place h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
     .place p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
 
+    /* ---- Pedir carga ---- */
+    .request-card { display: flex; flex-direction: column; gap: 8px; }
+    .request-btn {
+      width: 100%;
+      border: none;
+      border-radius: 18px;
+      padding: 17px;
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: #fff;
+      background: linear-gradient(135deg, #16a34a, #0d9488);
+      box-shadow: 0 12px 26px -12px rgba(22, 163, 74, 0.6);
+      transition: transform 0.1s ease, opacity 0.2s ease;
+    }
+    .request-btn:active { transform: scale(0.98); }
+    .request-btn[disabled] { background: #cbd5e1; box-shadow: none; color: #64748b; }
+    .request-hint { text-align: center; font-size: 13px; font-weight: 600; color: var(--muted); min-height: 16px; }
+    .request-hint.mine { color: var(--green); }
+
     /* ---- Hero ---- */
     .hero {
       position: relative;
@@ -204,6 +224,11 @@
     <div class="place">
       <h1 id="name">—</h1>
       <p id="loc">—</p>
+    </div>
+
+    <div class="request-card" id="requestCard" hidden>
+      <button class="request-btn" id="requestBtn">🚗 Quiero cargar mi auto</button>
+      <div class="request-hint" id="requestHint"></div>
     </div>
 
     <section class="hero" id="hero">

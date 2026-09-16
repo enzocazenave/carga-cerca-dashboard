@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#eef2f6" media="(prefers-color-scheme: light)" />
-  <meta name="theme-color" content="#0b1120" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#eef2f6" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/icons/icon-192.png" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="color-scheme" content="light" />
   <title>CargaCerca · Mi carga</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/pwa.js" defer></script>
@@ -26,19 +26,6 @@
       --disabled-fg: #64748b;
       --banner-bg: #fee2e2;
       --banner-fg: #b91c1c;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --ink: #f1f5f9;
-        --muted: #94a3b8;
-        --card: #1a2332;
-        --page: #0b1120;
-        --ring: rgba(0, 0, 0, 0.35);
-        --disabled-bg: #263144;
-        --disabled-fg: #64748b;
-        --banner-bg: #3f1d1d;
-        --banner-fg: #fca5a5;
-      }
     }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html, body { margin: 0; overflow-x: hidden; max-width: 100%; }
@@ -94,6 +81,10 @@
     /* ---- Pedir carga ---- */
     .request-card { display: flex; flex-direction: column; gap: 8px; }
     .request-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
       width: 100%;
       border: none;
       border-radius: 18px;
@@ -106,6 +97,7 @@
       box-shadow: 0 12px 26px -12px rgba(22, 163, 74, 0.6);
       transition: transform 0.1s ease, opacity 0.2s ease;
     }
+    .request-btn svg { flex: none; }
     .request-btn:active { transform: scale(0.98); }
     .request-btn[disabled] { background: var(--disabled-bg); box-shadow: none; color: var(--disabled-fg); }
     .request-hint { text-align: center; font-size: 13px; font-weight: 600; color: var(--muted); min-height: 16px; }
@@ -271,12 +263,12 @@
     </div>
 
     <div class="request-card" id="requestCard" hidden>
-      <button class="request-btn" id="requestBtn">🚗 Quiero cargar mi auto</button>
+      <button class="request-btn" id="requestBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" color="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11l1.3-4a2 2 0 0 1 1.9-1.4h7.6a2 2 0 0 1 1.9 1.4L19 11"/><rect x="3" y="11" width="18" height="6" rx="2"/><circle cx="7.5" cy="17.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="16.5" cy="17.5" r="1.3" fill="currentColor" stroke="none"/></svg> Quiero cargar mi auto</button>
       <div class="request-hint" id="requestHint"></div>
     </div>
 
     <section class="hero" id="hero">
-      <div class="hero-badge" id="badge">⚡</div>
+      <div class="hero-badge" id="badge"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fff" color="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4.5 13.5H11L10 22L19.5 9.5H13L13 2Z" fill="currentColor" stroke="none"/></svg></div>
       <div class="hero-status" id="status">Conectando…</div>
       <div class="hero-power"><span class="num" id="power">0.0</span><span class="unit">kW</span></div>
       <div class="hero-sub" id="sub">Velocidad de carga</div>
@@ -324,6 +316,7 @@
     <div class="foot">CargaCerca · prototipo</div>
   </div>
 
+  <script src="/icons.js"></script>
   <script src="/cliente.js"></script>
 </body>
 </html>

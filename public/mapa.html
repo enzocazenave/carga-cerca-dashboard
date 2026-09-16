@@ -29,7 +29,7 @@
       --gray: #94a3b8;
       --sheet-shadow: 0 -10px 32px -14px rgba(15, 23, 42, 0.3);
       --fab-shadow: 0 6px 18px -4px rgba(15, 23, 42, 0.35);
-      --sheet-h: 42vh;
+      --sheet-h: 30vh;
     }
     @media (prefers-color-scheme: dark) {
       :root {
@@ -194,6 +194,9 @@
     .row-dist { font-size: 12px; font-weight: 700; color: var(--muted); }
 
     .row-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
       border: none;
       border-radius: 12px;
       padding: 8px 12px;
@@ -204,6 +207,7 @@
       cursor: pointer;
       white-space: nowrap;
     }
+    .row-btn svg { flex: none; }
     .row-btn[disabled] { background: #e2e8f0; color: #94a3b8; }
     @media (prefers-color-scheme: dark) { .row-btn[disabled] { background: #263144; color: #64748b; } }
     .row-btn.ghost { background: none; color: var(--blue); padding: 8px 4px; }
@@ -281,6 +285,7 @@
     </svg>
   </button>
 
+  <script src="/icons.js"></script>
   <script src="/mapa.js"></script>
 </body>
 </html>

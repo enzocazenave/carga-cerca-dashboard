@@ -5,16 +5,17 @@ const $ = (id) => document.getElementById(id);
 
 $('techLink').href = `/chargers/${encodeURIComponent(chargerId)}`;
 
-// Mapa de estados técnicos -> presentación amigable para el cliente
+// Mapa de estados técnicos -> presentación amigable para el cliente.
+// `icon` es un nombre de /public/icons.js (CC_ICONS), no un emoji.
 const VIEW = {
-  'Cargando': { cls: 'charging', icon: '⚡', title: 'Cargando', sub: 'Velocidad de carga' },
-  'Consumo bajo': { cls: 'low', icon: '🔋', title: 'Carga lenta', sub: 'Consumo bajo' },
-  'Disponible': { cls: 'idle', icon: '🔌', title: 'Listo para cargar', sub: 'Enchufá tu auto al cargador' },
-  'Esperando tarjeta': { cls: 'idle', icon: '💳', title: 'Acercá tu tarjeta', sub: 'Apoyá tu tarjeta o llavero en el lector del cargador' },
-  'Tarjeta leída · esperando inicio': { cls: 'low', icon: '👉', title: 'Tarjeta leída', sub: 'Tocá "Iniciar carga" en la pantalla del cargador' },
-  'Carga finalizada': { cls: 'idle', icon: '✅', title: 'Carga finalizada', sub: 'Ya podés retirar el cable' },
-  'Desconectado': { cls: 'off', icon: '⚠️', title: 'Sin conexión', sub: 'No estamos recibiendo datos' },
-  'Nunca conectado': { cls: 'off', icon: '🔌', title: 'Esperando conexión', sub: 'Todavía no llegaron datos' },
+  'Cargando': { cls: 'charging', icon: 'bolt', title: 'Cargando', sub: 'Velocidad de carga' },
+  'Consumo bajo': { cls: 'low', icon: 'batteryLow', title: 'Carga lenta', sub: 'Consumo bajo' },
+  'Disponible': { cls: 'idle', icon: 'plug', title: 'Listo para cargar', sub: 'Enchufá tu auto al cargador' },
+  'Esperando tarjeta': { cls: 'idle', icon: 'card', title: 'Acercá tu tarjeta', sub: 'Apoyá tu tarjeta o llavero en el lector del cargador' },
+  'Tarjeta leída · esperando inicio': { cls: 'low', icon: 'arrowRightCircle', title: 'Tarjeta leída', sub: 'Tocá "Iniciar carga" en la pantalla del cargador' },
+  'Carga finalizada': { cls: 'idle', icon: 'checkCircle', title: 'Carga finalizada', sub: 'Ya podés retirar el cable' },
+  'Desconectado': { cls: 'off', icon: 'alertTriangle', title: 'Sin conexión', sub: 'No estamos recibiendo datos' },
+  'Nunca conectado': { cls: 'off', icon: 'plug', title: 'Esperando conexión', sub: 'Todavía no llegaron datos' },
 };
 
 let cfg = { pricePerKwh: 0, currency: 'ARS', kmPerKwh: 6 };
@@ -113,11 +114,15 @@ async function pedirCarga() {
   } catch (e) {
     alert(e.message);
     btn.disabled = false;
-    btn.textContent = '🚗 Quiero cargar mi auto';
+    btn.innerHTML = etiquetaPedirCarga();
   }
 }
 
 $('requestBtn').addEventListener('click', pedirCarga);
+
+function etiquetaPedirCarga() {
+  return `${iconSvg('car', { size: 16 })} Quiero cargar mi auto`;
+}
 
 function actualizarRequestCard(charger) {
   const card = $('requestCard');
@@ -135,7 +140,7 @@ function actualizarRequestCard(charger) {
   if (pr && pr.name) {
     btn.disabled = true;
     if (myName && pr.name === myName) {
-      btn.textContent = 'Solicitud enviada ✅';
+      btn.innerHTML = `${iconSvg('checkCircle', { size: 16 })} Solicitud enviada`;
       hint.textContent = 'Acercate y apoyá tu tarjeta en el cargador';
       hint.className = 'request-hint mine';
     } else {
@@ -145,7 +150,7 @@ function actualizarRequestCard(charger) {
     }
   } else {
     btn.disabled = false;
-    btn.textContent = '🚗 Quiero cargar mi auto';
+    btn.innerHTML = etiquetaPedirCarga();
     hint.textContent = '';
     hint.className = 'request-hint';
   }
@@ -174,7 +179,7 @@ async function refresh() {
 
   const v = VIEW[charger.status] || VIEW['Nunca conectado'];
   $('hero').className = 'hero ' + v.cls;
-  $('badge').textContent = v.icon;
+  $('badge').innerHTML = iconSvg(v.icon, { size: 34, color: '#fff', strokeWidth: 1.8 });
   $('status').textContent = v.title;
   $('sub').textContent = v.sub;
 

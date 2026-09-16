@@ -5,19 +5,21 @@ const NAME_KEY = 'cc_client_name';
 const getMyName = () => (localStorage.getItem(NAME_KEY) || '').trim() || null;
 
 // Mismo criterio "amigable" que la vista cliente (ver public/cliente.js),
-// pero acá solo necesitamos ícono + color, no toda la copy larga. Colores
-// en hex literal (no var(--...)): se concatenan con un sufijo de alpha
-// más abajo (`${color}22`) para el fondo tenue de los íconos de la lista,
-// y eso solo funciona con valores hex reales, no con var().
+// pero acá solo necesitamos ícono + color, no toda la copy larga. `icon` es
+// el nombre de un ícono de /public/icons.js (CC_ICONS), no un emoji: así se
+// ve igual en cualquier navegador/SO y se puede pintar del color del estado.
+// Colores en hex literal (no var(--...)): se concatenan con un sufijo de
+// alpha más abajo (`${color}22`) para el fondo tenue de los íconos de la
+// lista, y eso solo funciona con valores hex reales, no con var().
 const VIEW = {
-  'Cargando': { icon: '⚡', color: '#16a34a', label: 'Cargando' },
-  'Consumo bajo': { icon: '🔋', color: '#d97706', label: 'Carga lenta' },
-  'Disponible': { icon: '🔌', color: '#2563eb', label: 'Disponible' },
-  'Esperando tarjeta': { icon: '🔌', color: '#2563eb', label: 'Disponible' },
-  'Tarjeta leída · esperando inicio': { icon: '👉', color: '#d97706', label: 'Alguien está por cargar' },
-  'Carga finalizada': { icon: '✅', color: '#2563eb', label: 'Disponible' },
-  'Desconectado': { icon: '⚠️', color: '#ef4444', label: 'Sin conexión' },
-  'Nunca conectado': { icon: '🔌', color: '#94a3b8', label: 'Sin datos aún' },
+  'Cargando': { icon: 'bolt', color: '#16a34a', label: 'Cargando' },
+  'Consumo bajo': { icon: 'batteryLow', color: '#d97706', label: 'Carga lenta' },
+  'Disponible': { icon: 'plug', color: '#2563eb', label: 'Disponible' },
+  'Esperando tarjeta': { icon: 'plug', color: '#2563eb', label: 'Disponible' },
+  'Tarjeta leída · esperando inicio': { icon: 'arrowRightCircle', color: '#d97706', label: 'Alguien está por cargar' },
+  'Carga finalizada': { icon: 'checkCircle', color: '#2563eb', label: 'Disponible' },
+  'Desconectado': { icon: 'alertTriangle', color: '#ef4444', label: 'Sin conexión' },
+  'Nunca conectado': { icon: 'plug', color: '#94a3b8', label: 'Sin datos aún' },
 };
 
 let cfg = { maxRequestDistanceM: 150 };
@@ -26,8 +28,8 @@ let vistaCentrada = false;
 
 // Altura "asomada" de la hoja inferior (ver sección de arrastre, más abajo):
 // la usamos acá para que fitBounds no centre marcadores justo detrás de la
-// hoja, y allá para el snap al soltar. Un solo lugar, sin duplicar el 42.
-const SHEET_PEEK_VH = 42;
+// hoja, y allá para el snap al soltar. Un solo lugar, sin duplicar el valor.
+const SHEET_PEEK_VH = 30;
 let chargerIdResaltado = null;
 
 // ---- Mapa ----
@@ -96,15 +98,17 @@ function fmtDistancia(m) {
 }
 
 // Pin tipo "gota" (el clásico de Google Maps/Waze) dibujado en SVG, con el
-// emoji de estado adentro del círculo blanco. La sombra y la animación de
+// ícono de estado (de CC_ICONS, ver /public/icons.js) adentro del círculo
+// blanco, pintado del mismo color que la gota. La sombra y la animación de
 // caída van en CSS (.cc-pin-wrap), no acá, para no duplicar filtros SVG
 // con el mismo id en cada marcador.
-function pinIcon(color, icon) {
+function pinIcon(color, iconName) {
+  const glyph = CC_ICONS[iconName] || '';
   const svg = `
     <svg width="38" height="50" viewBox="0 0 38 50" xmlns="http://www.w3.org/2000/svg">
       <path d="M19 0C8.5 0 0 8.4 0 18.8 0 31.7 19 50 19 50S38 31.7 38 18.8C38 8.4 29.5 0 19 0Z" fill="${color}" stroke="#fff" stroke-width="1.5"/>
       <circle cx="19" cy="18.5" r="12.5" fill="#fff"/>
-      <text x="19" y="23.3" font-size="14" text-anchor="middle">${icon}</text>
+      <g transform="translate(11,10.5) scale(0.667)" fill="none" stroke="${color}" color="${color}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${glyph}</g>
     </svg>`;
   return L.divIcon({
     className: 'cc-pin-wrap',
@@ -149,7 +153,7 @@ async function pedirCarga(charger, btn) {
   } catch (e) {
     alert(e.message);
     btn.disabled = false;
-    btn.textContent = '🚗 Quiero cargar';
+    btn.innerHTML = `${iconSvg('car', { size: 14 })} Quiero cargar`;
   }
 }
 
@@ -211,12 +215,12 @@ function renderLista(chargers) {
       } else if (lejos) {
         btnHtml = `<button class="row-btn" disabled>Acercate</button>`;
       } else {
-        btnHtml = `<button class="row-btn" data-pedir="${esc(c.chargerId)}">🚗 Quiero cargar</button>`;
+        btnHtml = `<button class="row-btn" data-pedir="${esc(c.chargerId)}">${iconSvg('car', { size: 14 })} Quiero cargar</button>`;
       }
 
       return `
         <div class="charger-row ${c.chargerId === chargerIdResaltado ? 'highlight' : ''}" data-row="${esc(c.chargerId)}">
-          <div class="row-icon" style="background:${v.color}22">${v.icon}</div>
+          <div class="row-icon" style="background:${v.color}22">${iconSvg(v.icon, { size: 20, color: v.color })}</div>
           <div class="row-main">
             <div class="row-name">${esc(c.name)}</div>
             <div class="row-status">${statusHtml}</div>
@@ -247,27 +251,64 @@ function renderLista(chargers) {
   });
 }
 
-function renderMapa(chargers) {
-  capaCargadores.clearLayers();
+// chargerId -> { marker, colorActual, iconoActual }. Actualizamos los
+// marcadores existentes en vez de destruir y recrear todo en cada refresh
+// (cada 3-4s): recrearlos siempre reinicia la animación de "caída" del CSS
+// (.cc-pin-wrap) en TODOS los pines todo el tiempo, y eso es justo lo que
+// se veía como "titileo" — no algo exclusivo del estado desconectado.
+// Ahora un pin solo se vuelve a dibujar (y anima) cuando su color/ícono
+// realmente cambia; la posición se actualiza siempre, pero moverlo no
+// recrea el DOM así que no dispara la animación.
+const marcadoresCargadores = new Map();
 
+function renderMapa(chargers) {
   const conCoords = chargers.filter((c) => c.lat != null && c.lng != null);
+  const idsVistos = new Set();
 
   conCoords.forEach((c) => {
     const v = VIEW[c.status] || VIEW['Nunca conectado'];
-    const marker = L.marker([c.lat, c.lng], { icon: pinIcon(v.color, v.icon) }).addTo(capaCargadores);
-    marker.bindPopup(
+    idsVistos.add(c.chargerId);
+
+    const existente = marcadoresCargadores.get(c.chargerId);
+
+    if (!existente) {
+      const marker = L.marker([c.lat, c.lng], { icon: pinIcon(v.color, v.icon) }).addTo(capaCargadores);
+      marker.bindPopup(
+        `<div class="popup-name">${esc(c.name)}</div><div class="popup-status">${esc(v.label)}</div>`
+      );
+      marker.on('click', () => {
+        chargerIdResaltado = c.chargerId;
+        const row = document.querySelector(`[data-row="${cssEsc(c.chargerId)}"]`);
+        if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        renderLista(ultimosChargers);
+        setTimeout(() => {
+          chargerIdResaltado = null;
+        }, 2000);
+      });
+      marcadoresCargadores.set(c.chargerId, { marker, color: v.color, icon: v.icon });
+      return;
+    }
+
+    existente.marker.setLatLng([c.lat, c.lng]);
+
+    if (existente.color !== v.color || existente.icon !== v.icon) {
+      existente.marker.setIcon(pinIcon(v.color, v.icon));
+      existente.color = v.color;
+      existente.icon = v.icon;
+    }
+
+    existente.marker.setPopupContent(
       `<div class="popup-name">${esc(c.name)}</div><div class="popup-status">${esc(v.label)}</div>`
     );
-    marker.on('click', () => {
-      chargerIdResaltado = c.chargerId;
-      const row = document.querySelector(`[data-row="${cssEsc(c.chargerId)}"]`);
-      if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      renderLista(ultimosChargers);
-      setTimeout(() => {
-        chargerIdResaltado = null;
-      }, 2000);
-    });
   });
+
+  // Cargadores que ya no están (se borraron): sacamos su marcador.
+  for (const [chargerId, { marker }] of marcadoresCargadores) {
+    if (!idsVistos.has(chargerId)) {
+      capaCargadores.removeLayer(marker);
+      marcadoresCargadores.delete(chargerId);
+    }
+  }
 
   if (!vistaCentrada) {
     const puntos = conCoords.map((c) => [c.lat, c.lng]);

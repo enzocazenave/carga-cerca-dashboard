@@ -61,7 +61,11 @@ async function load() {
           <div class="status"><span class="dot ${cls}"></span>${esc(c.status)}</div>
           <div class="power">${powerW} W</div>
           <div class="seen">Última conexión: ${fmtAgo(c.lastSeenAt)}</div>
-          <div class="seen">${c.lat != null && c.lng != null ? '📍 En el mapa' : '⚠️ Sin coordenadas · no aparece en el mapa'}</div>
+          <div class="seen" style="display:flex;align-items:center;gap:5px">${
+            c.lat != null && c.lng != null
+              ? iconSvg('mapPin', { size: 12 }) + ' En el mapa'
+              : iconSvg('alertTriangle', { size: 12 }) + ' Sin coordenadas · no aparece en el mapa'
+          }</div>
         </a>
         <div class="card-actions">
           <a class="btn link" href="/c/${encodeURIComponent(c.chargerId)}">Vista cliente</a>
@@ -116,7 +120,7 @@ function openModal(charger) {
           <div class="field-row">
             <input id="f-lat" type="number" step="any" value="${charger?.lat ?? ''}" placeholder="Latitud" />
             <input id="f-lng" type="number" step="any" value="${charger?.lng ?? ''}" placeholder="Longitud" />
-            <button type="button" class="btn secondary" id="mUseLoc" title="Usar mi ubicación actual">📍</button>
+            <button type="button" class="btn secondary" id="mUseLoc" title="Usar mi ubicación actual">${iconSvg('mapPin', { size: 15 })}</button>
           </div>
           <div class="field-hint" id="mLocHint"></div>
         </div>

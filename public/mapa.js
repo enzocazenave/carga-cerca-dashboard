@@ -40,33 +40,13 @@ map.setView([-34.6037, -58.3816], 13); // Buenos Aires, hasta tener datos reales
 // ahora exige key en todos sus estilos (hasta el clásico "light_all" tira
 // el watermark "API KEY REQUIRED"), así que usamos el servicio REST clásico
 // de ArcGIS Online, que sigue siendo de uso libre.
-// Claro: calles a color, con nombres — el más "lindo" y legible.
-// Oscuro: dos capas apiladas (base gris oscuro + referencia con las calles/
-// nombres encima), para no dejar la pantalla blanca de golpe si el celular
-// está en modo oscuro.
-const capaClara = L.tileLayer(
-  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-  { maxZoom: 19, maxNativeZoom: 19 }
-);
-const capaOscura = L.layerGroup([
-  L.tileLayer(
-    'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-    { maxZoom: 19, maxNativeZoom: 16 }
-  ),
-  L.tileLayer(
-    'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
-    { maxZoom: 19, maxNativeZoom: 16 }
-  ),
-]);
-
-const prefiereOscuro = window.matchMedia('(prefers-color-scheme: dark)');
-
-function aplicarTemaMapa(oscuro) {
-  map.removeLayer(oscuro ? capaClara : capaOscura);
-  (oscuro ? capaOscura : capaClara).addTo(map);
-}
-aplicarTemaMapa(prefiereOscuro.matches);
-prefiereOscuro.addEventListener('change', (e) => aplicarTemaMapa(e.matches));
+// Siempre en claro (calles a color, con nombres): toda la app cliente
+// (mapa + vista de cargador) queda fija en modo claro a propósito, para
+// que combine con la pantalla física del cargador, que también es clara.
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+  maxZoom: 19,
+  maxNativeZoom: 19,
+}).addTo(map);
 
 L.control
   .attribution({ position: 'bottomleft', prefix: false })

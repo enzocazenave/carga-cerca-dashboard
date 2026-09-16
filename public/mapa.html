@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
-  <meta name="theme-color" content="#eef2f6" media="(prefers-color-scheme: light)" />
-  <meta name="theme-color" content="#0b1120" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#eef2f6" />
+  <meta name="color-scheme" content="light" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/icons/icon-192.png" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="mobile-web-app-capable" content="yes" />
   <title>CargaCerca · Mapa</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -31,17 +31,6 @@
       --fab-shadow: 0 6px 18px -4px rgba(15, 23, 42, 0.35);
       --sheet-h: 30vh;
     }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --ink: #f1f5f9;
-        --muted: #94a3b8;
-        --card: #17202f;
-        --page: #0b1120;
-        --ring: rgba(0, 0, 0, 0.4);
-        --sheet-shadow: 0 -10px 32px -10px rgba(0, 0, 0, 0.55);
-        --fab-shadow: 0 6px 18px -4px rgba(0, 0, 0, 0.6);
-      }
-    }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }
     body {
@@ -58,7 +47,6 @@
       inset: 0;
       background: #dfe6ee;
     }
-    @media (prefers-color-scheme: dark) { #map { background: #0b1120; } }
 
     /* ---- Pill flotante superior ---- */
     .top-pill {
@@ -150,9 +138,6 @@
       gap: 10px;
       flex: none;
     }
-    @media (prefers-color-scheme: dark) {
-      .banner { background: #3f2a10; border-color: #7c4a12; color: #fdba74; }
-    }
     .banner button {
       border: none;
       background: #9a3412;
@@ -209,7 +194,6 @@
     }
     .row-btn svg { flex: none; }
     .row-btn[disabled] { background: #e2e8f0; color: #94a3b8; }
-    @media (prefers-color-scheme: dark) { .row-btn[disabled] { background: #263144; color: #64748b; } }
     .row-btn.ghost { background: none; color: var(--blue); padding: 8px 4px; }
 
     .empty-list { text-align: center; color: var(--muted); font-size: 13px; padding: 24px 10px; }
@@ -252,10 +236,6 @@
     .leaflet-control-attribution {
       background: rgba(255, 255, 255, 0.75) !important;
       font-size: 10px !important;
-    }
-    @media (prefers-color-scheme: dark) {
-      .leaflet-control-attribution { background: rgba(15, 23, 42, 0.65) !important; color: #94a3b8 !important; }
-      .leaflet-control-attribution a { color: #cbd5e1 !important; }
     }
     .leaflet-bottom.leaflet-left { margin-bottom: calc(var(--sheet-h) + 6px); transition: margin-bottom 0.32s cubic-bezier(0.4, 0, 0.2, 1); }
     body.dragging-sheet .leaflet-bottom.leaflet-left { transition: none; }

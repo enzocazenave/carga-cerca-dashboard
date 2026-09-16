@@ -280,11 +280,28 @@ avisarle al backend cada transición:
 | Mientras carga (cada 2 s)                      | `POST /api/measurements`                                     |
 | Se desconecta el auto / termina (relé OFF)     | `POST device-state` → `{ state: "finalizada", cardUid }`     |
 
-Configurar arriba del archivo: `WIFI_SSID`, `WIFI_PASSWORD`, `API_BASE_URL`
-(tu dominio de Railway, sin `/` al final) y `CHARGER_ID` (tiene que existir
-antes en el panel). Librerías necesarias (Arduino Library Manager):
+Configurar arriba del archivo únicamente `API_BASE_URL` (tu dominio de
+Railway, sin `/` al final). El WiFi y el número de cargador se cargan durante
+el onboarding y quedan guardados en la memoria NVS del ESP32. Librerías
+necesarias (Arduino Library Manager):
 `Adafruit INA219`, `Adafruit GFX`, `Adafruit ILI9341`, `Adafruit PN532`,
 `XPT2046_Touchscreen`.
+
+### Onboarding sin teclado resistivo
+
+En el primer arranque, la estación crea una red temporal llamada
+`CargaCerca-XXXX`. La TFT muestra los tres pasos:
+
+1. Conectar el celular a esa red con la clave `cargacerca`.
+2. Abrir `http://192.168.4.1` (en muchos celulares el formulario se abre solo).
+3. Elegir la red WiFi, escribir su clave y el número de cargador.
+
+La estación prueba la conexión antes de guardar. Si la clave es incorrecta,
+mantiene el portal abierto para corregirla. Si en un arranque futuro la red
+guardada deja de estar disponible, vuelve automáticamente a este onboarding.
+No hace falta tocar la TFT ni calibrar el panel para configurar el equipo.
+Para cambiar una configuración que todavía conecta, mantener el lápiz apoyado
+en cualquier parte de la pantalla durante dos segundos mientras se enciende.
 
 **Tipografía**: la marca, los títulos y los números grandes usan las fuentes
 vectoriales `FreeSansBold9/12/18pt7b` que ya vienen dentro de
@@ -293,11 +310,12 @@ Las etiquetas chicas (VOLTAJE, CORRIENTE, etc.) se dejaron con la fuente
 clásica de 5x7 píxeles a propósito: a ese tamaño se ve bien y es la forma
 más segura de que el texto entre en recuadros chicos.
 
-**Touch**: el botón "Iniciar carga" no valida en qué parte de la pantalla
+**Touch**: el onboarding no usa coordenadas táctiles. El botón "Iniciar carga"
+no valida en qué parte de la pantalla
 tocaste — cualquier toque durante esa vista arranca la carga. Es a propósito
-(ver commit "hacer touch insensible a calibración"): el mapeo raw→pantalla
-del XPT2046 varía de módulo a módulo y no vale la pena calibrarlo a mano
-para un solo botón.
+(ver commit "hacer touch insensible a calibración"): un panel resistivo de
+4 hilos no es suficientemente preciso para un teclado o una lista angosta, y
+no vale la pena depender de su mapeo raw→pantalla para un solo botón.
 
 El resto del sketch (NFC, touch, relé, pantalla) es tu lógica original, sin
 cambios de comportamiento — solo se le agregó el WiFi y los `POST`.

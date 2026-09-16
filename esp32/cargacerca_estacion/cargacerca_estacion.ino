@@ -120,6 +120,17 @@ enum Estado {
 
 Estado estado = ESPERANDO_TARJETA;
 
+// El backend marca el cargador "Desconectado" si no le llega NADA (ni
+// medición ni estado) en config.status.offlineAfterMs (20s, ver config.js).
+// enviarEstadoDispositivo() solo se llama en las transiciones de estado
+// (tarjeta detectada, inicio, fin), así que un cargador que se queda
+// esperando tarjeta mucho tiempo (el caso normal de "disponible") deja de
+// avisar y termina viéndose desconectado aunque esté perfecto. Este
+// heartbeat re-manda el estado actual cada pocos segundos para que nunca
+// pase ese umbral mientras la ESP32 siga viva y con WiFi.
+const unsigned long INTERVALO_HEARTBEAT_MS = 10000;
+unsigned long ultimoHeartbeatMs = 0;
+
 // =====================================================
 // CARGA
 // =====================================================
@@ -1300,6 +1311,46 @@ void enviarEstadoDispositivo(
   http.end();
 }
 
+// -----------------------------------------------------
+
+const char* estadoComoTexto(Estado e) {
+  switch (e) {
+    case ESPERANDO_TARJETA:
+      return "esperando_tarjeta";
+    case ESPERANDO_INICIO:
+      return "esperando_inicio";
+    case CARGANDO:
+      return "cargando";
+  }
+
+  return "esperando_tarjeta";
+}
+
+// -----------------------------------------------------
+
+// Re-manda el estado actual cada INTERVALO_HEARTBEAT_MS, sin importar en
+// qué rama del loop() estemos. Sin esto, un cargador "disponible" (mucho
+// tiempo en ESPERANDO_TARJETA sin que nadie apoye una tarjeta) deja de
+// avisarle al backend y termina mostrándose "Desconectado" aunque esté
+// perfecto — ver el comentario en la declaración de ultimoHeartbeatMs.
+void heartbeat() {
+  if (
+    millis() -
+    ultimoHeartbeatMs <
+    INTERVALO_HEARTBEAT_MS
+  ) {
+    return;
+  }
+
+  ultimoHeartbeatMs =
+    millis();
+
+  enviarEstadoDispositivo(
+    estadoComoTexto(estado),
+    tarjetaActualUid
+  );
+}
+
 // =====================================================
 // BACKEND - MEDICIÓN
 // =====================================================
@@ -1820,6 +1871,8 @@ void setup() {
 
 void loop() {
   asegurarWiFi();
+
+  heartbeat();
 
   // ===================================================
   // ESPERANDO TARJETA

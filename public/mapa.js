@@ -5,36 +5,78 @@ const NAME_KEY = 'cc_client_name';
 const getMyName = () => (localStorage.getItem(NAME_KEY) || '').trim() || null;
 
 // Mismo criterio "amigable" que la vista cliente (ver public/cliente.js),
-// pero acá solo necesitamos ícono + color, no toda la copy larga.
+// pero acá solo necesitamos ícono + color, no toda la copy larga. Colores
+// en hex literal (no var(--...)): se concatenan con un sufijo de alpha
+// más abajo (`${color}22`) para el fondo tenue de los íconos de la lista,
+// y eso solo funciona con valores hex reales, no con var().
 const VIEW = {
-  'Cargando': { icon: '⚡', color: 'var(--green)', label: 'Cargando' },
-  'Consumo bajo': { icon: '🔋', color: 'var(--amber)', label: 'Carga lenta' },
-  'Disponible': { icon: '🔌', color: 'var(--blue)', label: 'Disponible' },
-  'Esperando tarjeta': { icon: '🔌', color: 'var(--blue)', label: 'Disponible' },
-  'Tarjeta leída · esperando inicio': { icon: '👉', color: 'var(--amber)', label: 'Alguien está por cargar' },
-  'Carga finalizada': { icon: '✅', color: 'var(--blue)', label: 'Disponible' },
-  'Desconectado': { icon: '⚠️', color: 'var(--red)', label: 'Sin conexión' },
-  'Nunca conectado': { icon: '🔌', color: 'var(--gray)', label: 'Sin datos aún' },
+  'Cargando': { icon: '⚡', color: '#16a34a', label: 'Cargando' },
+  'Consumo bajo': { icon: '🔋', color: '#d97706', label: 'Carga lenta' },
+  'Disponible': { icon: '🔌', color: '#2563eb', label: 'Disponible' },
+  'Esperando tarjeta': { icon: '🔌', color: '#2563eb', label: 'Disponible' },
+  'Tarjeta leída · esperando inicio': { icon: '👉', color: '#d97706', label: 'Alguien está por cargar' },
+  'Carga finalizada': { icon: '✅', color: '#2563eb', label: 'Disponible' },
+  'Desconectado': { icon: '⚠️', color: '#ef4444', label: 'Sin conexión' },
+  'Nunca conectado': { icon: '🔌', color: '#94a3b8', label: 'Sin datos aún' },
 };
 
 let cfg = { maxRequestDistanceM: 150 };
 let miPos = null; // { lat, lng }
 let vistaCentrada = false;
+
+// Altura "asomada" de la hoja inferior (ver sección de arrastre, más abajo):
+// la usamos acá para que fitBounds no centre marcadores justo detrás de la
+// hoja, y allá para el snap al soltar. Un solo lugar, sin duplicar el 42.
+const SHEET_PEEK_VH = 42;
 let chargerIdResaltado = null;
 
 // ---- Mapa ----
 const map = L.map('map', { zoomControl: false, attributionControl: false });
 map.setView([-34.6037, -58.3816], 13); // Buenos Aires, hasta tener datos reales
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19,
-}).addTo(map);
+// Tiles de Esri (gratis, sin API key). Probamos primero con CARTO pero
+// ahora exige key en todos sus estilos (hasta el clásico "light_all" tira
+// el watermark "API KEY REQUIRED"), así que usamos el servicio REST clásico
+// de ArcGIS Online, que sigue siendo de uso libre.
+// Claro: calles a color, con nombres — el más "lindo" y legible.
+// Oscuro: dos capas apiladas (base gris oscuro + referencia con las calles/
+// nombres encima), para no dejar la pantalla blanca de golpe si el celular
+// está en modo oscuro.
+const capaClara = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+  { maxZoom: 19, maxNativeZoom: 19 }
+);
+const capaOscura = L.layerGroup([
+  L.tileLayer(
+    'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    { maxZoom: 19, maxNativeZoom: 16 }
+  ),
+  L.tileLayer(
+    'https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+    { maxZoom: 19, maxNativeZoom: 16 }
+  ),
+]);
 
-L.control.attribution({ position: 'bottomleft', prefix: false }).addAttribution('© OpenStreetMap').addTo(map);
-L.control.zoom({ position: 'bottomright' }).addTo(map);
+const prefiereOscuro = window.matchMedia('(prefers-color-scheme: dark)');
+
+function aplicarTemaMapa(oscuro) {
+  map.removeLayer(oscuro ? capaClara : capaOscura);
+  (oscuro ? capaOscura : capaClara).addTo(map);
+}
+aplicarTemaMapa(prefiereOscuro.matches);
+prefiereOscuro.addEventListener('change', (e) => aplicarTemaMapa(e.matches));
+
+L.control
+  .attribution({ position: 'bottomleft', prefix: false })
+  .addAttribution('© <a href="https://www.esri.com">Esri</a> © OpenStreetMap contributors')
+  .addTo(map);
+
+// Sin control de +/-: en mobile se usa pinch-zoom (como Waze/Google Maps),
+// y así el mapa queda más limpio.
 
 const capaCargadores = L.layerGroup().addTo(map);
 let marcadorYo = null;
+let circuloPrecision = null;
 
 function distanciaMetros(lat1, lng1, lat2, lng2) {
   const R = 6371000;
@@ -53,17 +95,32 @@ function fmtDistancia(m) {
   return `${(m / 1000).toFixed(1)} km`;
 }
 
+// Pin tipo "gota" (el clásico de Google Maps/Waze) dibujado en SVG, con el
+// emoji de estado adentro del círculo blanco. La sombra y la animación de
+// caída van en CSS (.cc-pin-wrap), no acá, para no duplicar filtros SVG
+// con el mismo id en cada marcador.
 function pinIcon(color, icon) {
+  const svg = `
+    <svg width="38" height="50" viewBox="0 0 38 50" xmlns="http://www.w3.org/2000/svg">
+      <path d="M19 0C8.5 0 0 8.4 0 18.8 0 31.7 19 50 19 50S38 31.7 38 18.8C38 8.4 29.5 0 19 0Z" fill="${color}" stroke="#fff" stroke-width="1.5"/>
+      <circle cx="19" cy="18.5" r="12.5" fill="#fff"/>
+      <text x="19" y="23.3" font-size="14" text-anchor="middle">${icon}</text>
+    </svg>`;
   return L.divIcon({
-    className: '',
-    html: `<div class="cc-pin" style="background:${color}"><span>${icon}</span></div>`,
-    iconSize: [30, 30],
-    iconAnchor: [15, 29],
-    popupAnchor: [0, -28],
+    className: 'cc-pin-wrap',
+    html: svg,
+    iconSize: [38, 50],
+    iconAnchor: [19, 48],
+    popupAnchor: [0, -44],
   });
 }
 
-const meIcon = L.divIcon({ className: '', html: '<div class="cc-me"></div>', iconSize: [18, 18], iconAnchor: [9, 9] });
+const meIcon = L.divIcon({
+  className: 'cc-me-wrap',
+  html: '<div class="cc-me"></div>',
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
+});
 
 async function api(path, opts) {
   const res = await fetch(path, opts);
@@ -215,11 +272,16 @@ function renderMapa(chargers) {
   if (!vistaCentrada) {
     const puntos = conCoords.map((c) => [c.lat, c.lng]);
     if (miPos) puntos.push([miPos.lat, miPos.lng]);
-    if (puntos.length > 1) {
-      map.fitBounds(puntos, { padding: [40, 40], maxZoom: 16 });
-      vistaCentrada = true;
-    } else if (puntos.length === 1) {
-      map.setView(puntos[0], 15);
+    if (puntos.length > 0) {
+      // Padding asimétrico: la hoja tapa un 42% de abajo y el pill flota
+      // arriba. Sin esto, fitBounds centra los puntos en el medio del DIV
+      // completo del mapa y terminan escondidos detrás de la hoja.
+      const sheetPeekPx = window.innerHeight * (SHEET_PEEK_VH / 100);
+      map.fitBounds(puntos, {
+        paddingTopLeft: [30, 90],
+        paddingBottomRight: [30, sheetPeekPx + 30],
+        maxZoom: 16,
+      });
       vistaCentrada = true;
     }
   }
@@ -285,6 +347,21 @@ function pedirUbicacion() {
         marcadorYo.setLatLng([miPos.lat, miPos.lng]);
       }
 
+      // Círculo de precisión GPS, como en Google Maps/Waze.
+      if (!circuloPrecision) {
+        circuloPrecision = L.circle([miPos.lat, miPos.lng], {
+          radius: pos.coords.accuracy || 30,
+          color: '#2563eb',
+          weight: 1,
+          fillColor: '#2563eb',
+          fillOpacity: 0.12,
+          interactive: false,
+        }).addTo(map);
+      } else {
+        circuloPrecision.setLatLng([miPos.lat, miPos.lng]);
+        circuloPrecision.setRadius(pos.coords.accuracy || 30);
+      }
+
       const ahora = Date.now();
       if (esPrimeraVez || ahora - ultimoRenderPesadoMs >= MIN_INTERVALO_RENDER_PESADO_MS) {
         ultimoRenderPesadoMs = ahora;
@@ -308,6 +385,62 @@ $('locateBtn').addEventListener('click', () => {
     pedirUbicacion();
   }
 });
+
+// ---- Hoja inferior arrastrable ----
+// Dos posiciones (asomada/expandida). Arrastrar el "handle" mueve la altura
+// en vivo; al soltar, redondea a la posición más cercana. Un toque sin
+// arrastre (dragMoved sigue en false) alterna entre las dos.
+const sheet = $('sheet');
+const sheetDrag = $('sheetDrag');
+const PEEK_VH = 42;
+const EXPANDED_VH = 80;
+let sheetExpandida = false;
+let arrastrando = false;
+let dragMoved = false;
+let dragStartY = 0;
+let dragStartAltura = 0;
+
+const vhToPx = (vh) => (window.innerHeight * vh) / 100;
+const setSheetHeight = (css) => document.documentElement.style.setProperty('--sheet-h', css);
+
+function snapSheet(expandida) {
+  sheetExpandida = expandida;
+  setSheetHeight(`${expandida ? EXPANDED_VH : PEEK_VH}vh`);
+}
+
+sheetDrag.addEventListener('pointerdown', (e) => {
+  arrastrando = true;
+  dragMoved = false;
+  document.body.classList.add('dragging-sheet');
+  dragStartY = e.clientY;
+  dragStartAltura = sheet.getBoundingClientRect().height;
+  sheetDrag.setPointerCapture(e.pointerId);
+});
+
+sheetDrag.addEventListener('pointermove', (e) => {
+  if (!arrastrando) return;
+  const dy = dragStartY - e.clientY;
+  if (Math.abs(dy) > 6) dragMoved = true;
+  const nuevaAltura = Math.min(vhToPx(88), Math.max(vhToPx(18), dragStartAltura + dy));
+  setSheetHeight(`${nuevaAltura}px`);
+});
+
+function terminarDrag() {
+  if (!arrastrando) return;
+  arrastrando = false;
+  document.body.classList.remove('dragging-sheet');
+
+  if (!dragMoved) {
+    snapSheet(!sheetExpandida);
+    return;
+  }
+
+  const vh = (sheet.getBoundingClientRect().height / window.innerHeight) * 100;
+  snapSheet(vh > (PEEK_VH + EXPANDED_VH) / 2);
+}
+
+sheetDrag.addEventListener('pointerup', terminarDrag);
+sheetDrag.addEventListener('pointercancel', terminarDrag);
 
 (async () => {
   try {

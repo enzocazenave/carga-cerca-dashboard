@@ -702,6 +702,71 @@ void pantallaTarjetaSinSolicitud() {
 }
 
 // =====================================================
+// VALIDANDO TARJETA
+// =====================================================
+
+// Se dibuja apenas el lector detecta una tarjeta, ANTES de consultar al
+// backend si hay una solicitud pendiente (esa consulta es de red y puede
+// tardar hasta un par de segundos — ver loop(), rama ESPERANDO_TARJETA).
+// Sin esto la pantalla se queda "congelada" ese rato, como si no hubiera
+// pasado nada.
+void pantallaValidando() {
+  pantallaCargaDibujada = false;
+
+  tft.fillScreen(COLOR_BG);
+
+  dibujarHeader(
+    "VALIDANDO",
+    COLOR_BLUE
+  );
+
+  tft.fillRoundRect(
+    20,
+    58,
+    280,
+    130,
+    16,
+    COLOR_CARD
+  );
+
+  tft.drawRoundRect(
+    20,
+    58,
+    280,
+    130,
+    16,
+    COLOR_BORDER
+  );
+
+  tft.fillCircle(
+    160,
+    105,
+    41,
+    COLOR_GREEN_LIGHT
+  );
+
+  dibujarIconoNFC(
+    160,
+    105,
+    COLOR_GREEN
+  );
+
+  tituloCentrado(
+    "Validando...",
+    148,
+    FONT_TITLE,
+    COLOR_TEXT
+  );
+
+  textoCentrado(
+    "Un momento",
+    171,
+    1,
+    COLOR_MUTED
+  );
+}
+
+// =====================================================
 // TARJETA DETECTADA
 // =====================================================
 
@@ -1366,7 +1431,11 @@ String obtenerNombreSolicitudPendiente() {
 
   http.begin(url);
 
-  http.setTimeout(4000);
+  // Timeout corto a propósito: esta consulta corre en medio del loop que
+  // escucha la tarjeta NFC (ver loop(), rama ESPERANDO_TARJETA). Si el
+  // backend tarda o la red está mala, preferimos que falle rápido (nombre
+  // "") y siga escuchando NFC, antes que quedar 4s sin poder leer tarjeta.
+  http.setTimeout(2000);
 
   int code =
     http.GET();
@@ -1726,6 +1795,14 @@ void setup() {
 
   nfc.SAMConfig();
 
+  // Subir la ganancia del receptor (RxGain) al máximo: es el ajuste
+  // estándar para estirar el alcance de lectura de un PN532 sin tocar
+  // antena. Registro interno CIU_RFCfg (0x6303), bits 6:4 = RxGain;
+  // 0x70 = 111b = 48 dB (máximo; el reset de fábrica trae ~33 dB).
+  // El límite real lo sigue poniendo el tamaño/diseño de la antena: esto
+  // exprime lo que da el hardware, no lo reemplaza.
+  nfc.writeRegister(0x6303, 0x70);
+
   estado =
     ESPERANDO_TARJETA;
 
@@ -1752,31 +1829,10 @@ void loop() {
     estado ==
     ESPERANDO_TARJETA
   ) {
-    // Cada pocos segundos preguntamos si alguien pidió cargar desde la
-    // app, para saludarlo por nombre. Solo mientras esperamos tarjeta:
-    // una vez que alguien la apoya, el nombre ya quedó fijado.
-    if (
-      millis() -
-      ultimaConsultaSolicitudMs >=
-      INTERVALO_CONSULTA_SOLICITUD_MS
-    ) {
-      ultimaConsultaSolicitudMs =
-        millis();
-
-      String nombre =
-        obtenerNombreSolicitudPendiente();
-
-      if (
-        nombre !=
-        nombreClienteActual
-      ) {
-        nombreClienteActual =
-          nombre;
-
-        pantallaEsperando();
-      }
-    }
-
+    // La lectura NFC va SIEMPRE primero y sin nada por delante: el poll al
+    // backend es una llamada de red (puede demorar) y si corriera antes,
+    // justo el ciclo en que alguien apoya la tarjeta podría perderse
+    // esperando la respuesta HTTP en vez de escuchar al lector.
     uint8_t uid[7];
     uint8_t uidLength;
 
@@ -1789,6 +1845,10 @@ void loop() {
       );
 
     if (success) {
+      // Feedback instantáneo: la consulta de abajo es de red y puede
+      // tardar, no queremos que la pantalla parezca colgada mientras tanto.
+      pantallaValidando();
+
       // Solo dejamos avanzar si alguien pidió cargar desde la app. Acá
       // consultamos fresco (no el nombreClienteActual del poll periódico,
       // que puede tener hasta INTERVALO_CONSULTA_SOLICITUD_MS de atraso)
@@ -1826,6 +1886,31 @@ void loop() {
         );
 
         delay(500);
+      }
+    } else {
+      // No hay tarjeta en este ciclo: recién acá vale la pena preguntarle
+      // al backend si alguien pidió cargar desde la app, para saludarlo
+      // por nombre. Cada pocos segundos nomás, no en cada vuelta del loop.
+      if (
+        millis() -
+        ultimaConsultaSolicitudMs >=
+        INTERVALO_CONSULTA_SOLICITUD_MS
+      ) {
+        ultimaConsultaSolicitudMs =
+          millis();
+
+        String nombre =
+          obtenerNombreSolicitudPendiente();
+
+        if (
+          nombre !=
+          nombreClienteActual
+        ) {
+          nombreClienteActual =
+            nombre;
+
+          pantallaEsperando();
+        }
       }
     }
   }

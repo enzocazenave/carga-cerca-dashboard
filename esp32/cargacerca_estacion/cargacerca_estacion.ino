@@ -1087,6 +1087,36 @@ void guardarChargerId(const String &id) {
   prefs.end();
 }
 
+// Reset rápido desde el monitor serie (USB), sin depender de acertar el
+// toque en pantalla al encender. Escribir "RESET" y Enter en el monitor
+// serie (115200 baudios) borra charger_id y WiFi guardados y reinicia el
+// ESP32, que arranca directo en el portal de configuración.
+void procesarComandoSerial() {
+  if (!Serial.available()) return;
+
+  String comando = Serial.readStringUntil('\n');
+  comando.trim();
+  comando.toUpperCase();
+
+  if (comando.length() == 0) return;
+
+  Serial.print("Comando recibido: '");
+  Serial.print(comando);
+  Serial.println("'");
+
+  if (comando.indexOf("RESET") >= 0) {
+    prefs.begin("cargacerca", false);
+    prefs.remove("charger_id");
+    prefs.remove("wifi_ssid");
+    prefs.remove("wifi_password");
+    prefs.end();
+
+    Serial.println("Preferencias borradas (charger_id, wifi). Reiniciando...");
+    delay(300);
+    ESP.restart();
+  }
+}
+
 // Grilla 4 filas x 3 columnas. Los botones son grandes a propósito: el
 // touch del XPT2046 no está calibrado pixel a pixel (ver leerTouch), así
 // que conviene que cada botón tenga margen de sobra para tolerar el error.
@@ -1382,8 +1412,8 @@ String paginaFormularioSetup(
   html += F("*{box-sizing:border-box}body{margin:0;background:#f5f7f6;color:#1d2924;font-family:system-ui,sans-serif}");
   html += F("main{max-width:520px;margin:auto;padding:24px 18px}h1{margin:0 0 6px;font-size:28px}p{color:#607068;margin:0 0 24px}");
   html += F("form{background:white;border:1px solid #dce5e0;border-radius:18px;padding:20px;box-shadow:0 10px 30px #183b2b12}");
-  html += F("label{display:block;font-weight:700;margin:18px 0 7px}input{width:100%;min-height:52px;border:2px solid #cad7d0;border-radius:12px;padding:0 14px;font-size:18px}");
-  html += F("input:focus{outline:3px solid #86d7ad;border-color:#23845a}button{width:100%;min-height:56px;margin-top:24px;border:0;border-radius:14px;background:#23845a;color:white;font-size:18px;font-weight:800}");
+  html += F("label{display:block;font-weight:700;margin:18px 0 7px}input,select{width:100%;min-height:52px;border:2px solid #cad7d0;border-radius:12px;padding:0 14px;font-size:18px;background:white;font-family:inherit}");
+  html += F("input:focus,select:focus{outline:3px solid #86d7ad;border-color:#23845a}button{width:100%;min-height:56px;margin-top:24px;border:0;border-radius:14px;background:#23845a;color:white;font-size:18px;font-weight:800}");
   html += F(".aviso{background:#fff2cf;color:#674d00;padding:12px;border-radius:10px;margin-bottom:12px}.ayuda{font-size:14px;margin-top:7px;color:#607068}</style></head><body><main>");
   html += F("<h1>CargaCerca</h1><p>Configura la estacion sin usar el teclado resistivo.</p>");
 
@@ -1394,15 +1424,27 @@ String paginaFormularioSetup(
   }
 
   html += F("<form method='post' action='/guardar' autocomplete='off'>");
-  html += F("<label for='ssid'>Red WiFi</label><input id='ssid' name='ssid' list='redes' maxlength='32' required placeholder='Elegir o escribir red'><datalist id='redes'>");
+  html += F("<label for='ssid'>Red WiFi</label>");
 
-  for (int i = 0; i < cantidadRedes; i++) {
-    html += F("<option value=\"");
-    html += escaparHtml(redes[i]);
-    html += F("\"></option>");
+  if (cantidadRedes > 0) {
+    html += F("<select id='ssid_select'><option value='' selected disabled>Elegir red...</option>");
+
+    for (int i = 0; i < cantidadRedes; i++) {
+      html += F("<option value=\"");
+      html += escaparHtml(redes[i]);
+      html += F("\">");
+      html += escaparHtml(redes[i]);
+      html += F("</option>");
+    }
+
+    html += F("<option value=\"__manual__\">Otra red (escribir el nombre)</option></select>");
+    html += F("<input id='ssid' name='ssid' maxlength='32' required placeholder='Nombre de la red' autocapitalize='none' spellcheck='false' style='display:none;margin-top:10px'>");
+    html += F("<div class='ayuda'>Si tu red no aparece, elegi \"Otra red\" y escribi el nombre.</div>");
+    html += F("<script>(function(){var s=document.getElementById('ssid_select'),t=document.getElementById('ssid');s.addEventListener('change',function(){if(!s.value||s.value=='__manual__'){t.style.display='block';t.value=''}else{t.style.display='none';t.value=s.value}});})();</script>");
+  } else {
+    html += F("<input id='ssid' name='ssid' maxlength='32' required placeholder='Nombre de la red' autocapitalize='none' spellcheck='false'>");
+    html += F("<div class='ayuda'>No se detectaron redes cercanas, escribi el nombre a mano.</div>");
   }
-
-  html += F("</datalist><div class='ayuda'>Si no aparece, tambien podes escribir el nombre.</div>");
   html += F("<label for='password'>Clave WiFi</label><input id='password' name='password' type='password' maxlength='64' autocapitalize='none' spellcheck='false'>");
   html += F("<label for='charger'>Numero de cargador</label><input id='charger' name='charger' type='number' inputmode='numeric' min='1' max='999' required placeholder='Ejemplo: 1' value='");
   if (chargerId.startsWith("CC-")) html += escaparHtml(chargerId.substring(3));
@@ -1506,6 +1548,7 @@ void ejecutarOnboardingDesdeCelular() {
   servidor.begin();
 
   while (!configuracionLista) {
+    procesarComandoSerial();
     dns.processNextRequest();
     servidor.handleClient();
 
@@ -1522,6 +1565,7 @@ void ejecutarOnboardingDesdeCelular() {
 
     unsigned long inicioPrueba = millis();
     while (WiFi.status() != WL_CONNECTED && millis() - inicioPrueba < 18000) {
+      procesarComandoSerial();
       dns.processNextRequest();
       servidor.handleClient();
       delay(20);
@@ -3006,6 +3050,8 @@ void setup() {
 // =====================================================
 
 void loop() {
+  procesarComandoSerial();
+
   asegurarWiFi();
 
   heartbeat();

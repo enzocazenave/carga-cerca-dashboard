@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>CargaCerca · Enchufate al barrio</title>
+  <meta name="description" content="Cargá tu auto eléctrico en el cargador de un vecino, más barato que en la estación y sin paquetes prepagos. Y si tenés cargador, compartilo y generá ingresos." />
+  <meta name="theme-color" content="#111729" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="es_AR" />
+  <meta property="og:title" content="CargaCerca · Enchufate al barrio" />
+  <meta property="og:description" content="Cargá tu auto eléctrico en el cargador de un vecino. Compartí tu cargador y generá ingresos." />
+  <meta property="og:image" content="/brand/og.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="/brand.css" />
+  <style>
+    :root {
+      --ink: var(--cc-navy);
+      --muted: var(--cc-muted);
+      --page: #ffffff;
+      --wrap: 1120px;
+      --gutter: 20px;
+      /* Grilla de calles en diagonal, apenas más clara que el navy
+         (libro de marca, "Mapa de calles"). */
+      --street: #1D2539;
+      --streets:
+        repeating-linear-gradient(76deg, transparent 0 86px, var(--street) 86px 94px),
+        repeating-linear-gradient(-14deg, transparent 0 86px, var(--street) 86px 94px);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    body {
+      margin: 0;
+      font-family: var(--cc-font);
+      font-weight: 500;
+      color: var(--ink);
+      background: var(--page);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+    img, video, svg { max-width: 100%; }
+    a { color: inherit; }
+    [hidden] { display: none !important; }
+    .wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 var(--gutter); }
+
+    h1, h2, h3 { margin: 0; font-weight: 800; letter-spacing: var(--cc-title-tracking); line-height: 1.06; }
+    h2 { font-size: clamp(30px, 4.6vw, 48px); }
+    h3 { font-size: 19px; letter-spacing: -0.015em; line-height: 1.25; }
+    .lead { font-size: clamp(17px, 1.6vw, 19px); color: var(--muted); max-width: 34em; margin: 16px 0 0; }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 13px; font-weight: 800; letter-spacing: 0.02em;
+      color: var(--cc-blue-ink);
+      margin-bottom: 14px;
+    }
+    .dark .eyebrow { color: var(--cc-blue); }
+
+    /* Etiqueta blanca con punto verde: "Ruta y etiqueta" del libro de marca */
+    .tag {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #fff; color: var(--cc-navy);
+      border: 1px solid var(--cc-line);
+      border-radius: 10px;
+      padding: 7px 12px;
+      font-size: 13.5px; font-weight: 800;
+    }
+    .tag::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--cc-green); flex: none; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      border: 0; border-radius: 14px;
+      padding: 15px 22px;
+      font: inherit; font-size: 16px; font-weight: 800; letter-spacing: -0.01em;
+      text-decoration: none; cursor: pointer;
+      transition: transform 0.12s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn:focus-visible, a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible {
+      outline: 3px solid var(--cc-blue); outline-offset: 2px;
+    }
+    .btn-navy { background: var(--cc-navy); color: #fff; }
+    .btn-navy:hover { background: #1E2640; }
+    .btn-white { background: #fff; color: var(--cc-navy); }
+    .btn-white:hover { background: var(--cc-niebla); }
+    .btn-ghost { background: transparent; color: #fff; box-shadow: inset 0 0 0 2px rgba(231, 233, 238, 0.35); }
+    .btn-ghost:hover { box-shadow: inset 0 0 0 2px var(--cc-niebla); }
+    .btn svg { flex: none; }
+
+    /* ---------- Navegación ---------- */
+    .nav {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(17, 23, 41, 0.92);
+      backdrop-filter: saturate(1.4) blur(10px);
+      -webkit-backdrop-filter: saturate(1.4) blur(10px);
+      border-bottom: 1px solid rgba(231, 233, 238, 0.08);
+    }
+    .nav-inner { display: flex; align-items: center; gap: 28px; height: 68px; }
+    .nav .cc-logo { height: 40px; }
+    .nav-links { display: flex; gap: 6px; margin-left: auto; }
+    .nav-links a {
+      color: rgba(231, 233, 238, 0.78); text-decoration: none;
+      font-size: 14.5px; font-weight: 700;
+      padding: 8px 12px; border-radius: 10px;
+    }
+    .nav-links a:hover { color: #fff; background: rgba(231, 233, 238, 0.08); }
+    .nav .btn { padding: 10px 16px; font-size: 14.5px; border-radius: 12px; }
+    @media (max-width: 860px) {
+      .nav-links { display: none; }
+      .nav .btn { margin-left: auto; }
+    }
+
+    /* ---------- Hero ---------- */
+    .dark { background: var(--cc-navy); color: #fff; }
+    .dark .lead { color: rgba(231, 233, 238, 0.78); }
+    .hero {
+      position: relative;
+      background-color: var(--cc-navy);
+      background-image: var(--streets);
+      overflow: hidden;
+    }
+    .hero::after {
+      /* Viñeta: la grilla se desvanece hacia el texto para no competir con él */
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(120% 90% at 0% 40%, rgba(17, 23, 41, 0.96) 30%, rgba(17, 23, 41, 0.55) 70%, rgba(17, 23, 41, 0.2));
+    }
+    .hero-inner {
+      position: relative; z-index: 1;
+      display: grid; grid-template-columns: 1.05fr 1fr; gap: 40px; align-items: center;
+      padding-top: 72px; padding-bottom: 88px;
+    }
+    .hero h1 { font-size: clamp(46px, 8vw, 92px); line-height: 0.98; }
+    .hero h1 span { color: var(--cc-blue); }
+    .hero .lead { font-size: clamp(18px, 1.9vw, 21px); }
+    .hero-ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+    .hero-note { margin-top: 22px; font-size: 14px; color: rgba(231, 233, 238, 0.62); }
+
+    .hero-map {
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(231, 233, 238, 0.08);
+      aspect-ratio: 520 / 440;
+      background: var(--cc-navy);
+    }
+    .hero-map svg { display: block; width: 100%; height: 100%; }
+    .route { stroke-dasharray: 520; stroke-dashoffset: 520; animation: draw 2.4s 0.6s cubic-bezier(0.6, 0, 0.3, 1) forwards; }
+    .map-label { opacity: 0; animation: rise 0.5s 2.7s ease forwards; }
+    .pulse { transform-box: fill-box; transform-origin: center; animation: halo 2.2s ease-out infinite; }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+    @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    @keyframes halo { 0% { transform: scale(0.7); opacity: 0.6; } 100% { transform: scale(1.35); opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      .route { animation: none; stroke-dashoffset: 0; }
+      .map-label { animation: none; opacity: 1; }
+      .pulse { animation: none; }
+    }
+
+    @media (max-width: 860px) {
+      .hero-inner { grid-template-columns: 1fr; padding-top: 48px; padding-bottom: 64px; }
+      .hero::after { background: linear-gradient(180deg, rgba(17, 23, 41, 0.94) 35%, rgba(17, 23, 41, 0.6)); }
+    }
+
+    /* ---------- Datos de mercado ---------- */
+    .facts { background: var(--cc-surface); border-bottom: 1px solid var(--cc-line); }
+    .facts-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; }
+    .fact { padding: 34px 24px 34px 0; }
+    .fact + .fact { padding-left: 24px; border-left: 1px solid var(--cc-line); }
+    .fact b { display: block; font-size: clamp(30px, 3.4vw, 40px); font-weight: 800; letter-spacing: var(--cc-title-tracking); line-height: 1.05; font-variant-numeric: tabular-nums; }
+    .fact span { display: block; margin-top: 8px; color: var(--muted); font-size: 14.5px; }
+    .fact b em { font-style: normal; color: var(--cc-green-ink); }
+    @media (max-width: 860px) {
+      .facts-grid { grid-template-columns: 1fr 1fr; }
+      .fact, .fact + .fact { padding: 24px 16px; border-left: 0; }
+      .fact:nth-child(even) { border-left: 1px solid var(--cc-line); }
+      .fact:nth-child(n+3) { border-top: 1px solid var(--cc-line); }
+    }
+
+    /* ---------- Secciones ---------- */
+    section.block { padding: 104px 0; }
+    @media (max-width: 860px) { section.block { padding: 72px 0; } }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+    .split.flip > :first-child { order: 2; }
+    @media (max-width: 860px) {
+      .split { grid-template-columns: 1fr; gap: 36px; }
+      .split.flip > :first-child { order: 0; }
+    }
+
+    .video {
+      position: relative;
+      border-radius: 24px; overflow: hidden;
+      background: var(--cc-navy);
+      aspect-ratio: 16 / 9;
+      box-shadow: 0 30px 60px -30px rgba(17, 23, 41, 0.55);
+    }
+    .dark .video { box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(231, 233, 238, 0.08); }
+    .video video { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+    .steps { list-style: none; padding: 0; margin: 32px 0 0; display: grid; gap: 18px; counter-reset: s; }
+    .steps li { display: grid; grid-template-columns: 36px 1fr; gap: 14px; align-items: start; counter-increment: s; }
+    .steps li::before {
+      content: counter(s);
+      width: 32px; height: 32px; border-radius: 50%;
+      display: grid; place-items: center;
+      background: var(--cc-navy); color: #fff;
+      font-size: 14px; font-weight: 800;
+    }
+    .dark .steps li::before { background: var(--cc-blue); }
+    .steps b { display: block; font-size: 16.5px; font-weight: 800; letter-spacing: -0.01em; }
+    .steps span { color: var(--muted); font-size: 15px; }
+    .dark .steps span { color: rgba(231, 233, 238, 0.72); }
+
+    /* Ejemplo de ganancia del anfitrión */
+    .earn {
+      margin-top: 32px;
+      background: #fff; color: var(--cc-navy);
+      border-radius: 20px; padding: 20px 22px;
+      box-shadow: 0 20px 50px -24px rgba(0, 0, 0, 0.6);
+    }
+    .earn-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 14px; font-weight: 800; }
+    .earn-head small { font-size: 12.5px; font-weight: 700; color: var(--cc-green-ink); background: var(--cc-green-soft); padding: 3px 10px; border-radius: 999px; }
+    .earn-rows { margin: 12px 0 0; display: grid; gap: 0; }
+    .earn-rows div { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--cc-line); font-size: 14.5px; color: var(--muted); }
+    .earn-rows div b { color: var(--cc-navy); font-variant-numeric: tabular-nums; }
+    .earn-rows div.total { color: var(--cc-navy); font-weight: 800; }
+    .earn-rows div.total b { color: var(--cc-green-ink); font-size: 18px; }
+    .earn-foot { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+    .chip { font-size: 13.5px; font-weight: 800; padding: 7px 14px; border-radius: 999px; border: 1px solid rgba(231, 233, 238, 0.22); color: var(--cc-niebla); }
+
+    /* ---------- Precios ---------- */
+    .compare { margin-top: 44px; display: grid; gap: 18px; max-width: 760px; }
+    .bar-row { display: grid; grid-template-columns: 200px 1fr; gap: 16px; align-items: center; }
+    .bar-row > span { font-weight: 700; font-size: 15px; }
+    .bar-row > span small { display: block; font-weight: 600; color: var(--muted); font-size: 13px; }
+    .bar { position: relative; height: 44px; border-radius: 12px; background: var(--cc-surface); }
+    .bar i {
+      position: absolute; inset: 0 auto 0 0; border-radius: 12px;
+      display: flex; align-items: center; justify-content: flex-end; padding: 0 14px;
+      font-style: normal; font-weight: 800; font-size: 15px; color: #fff; white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .bar.station i { background: var(--cc-muted); }
+    .bar.station i::after {
+      /* El rango de la estación (ARS 650 a 800) */
+      content: ""; position: absolute; left: 81.25%; right: 0; top: 0; bottom: 0;
+      border-radius: 0 12px 12px 0;
+      background: repeating-linear-gradient(135deg, rgba(255,255,255,0.18) 0 6px, transparent 6px 12px);
+    }
+    .bar.cc i { background: var(--cc-green); color: var(--cc-navy); }
+    @media (max-width: 640px) { .bar-row { grid-template-columns: 1fr; gap: 6px; } }
+
+    .plans { margin-top: 64px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .plan {
+      border: 1px solid var(--cc-line); border-radius: 22px; padding: 26px;
+      display: flex; flex-direction: column; gap: 6px;
+      background: #fff;
+    }
+    .plan.featured { background: var(--cc-navy); color: #fff; border-color: var(--cc-navy); }
+    .plan .who { font-size: 13px; font-weight: 800; color: var(--cc-blue-ink); letter-spacing: 0.02em; }
+    .plan.featured .who { color: var(--cc-blue); }
+    .plan .price { margin-top: 10px; font-size: 34px; font-weight: 800; letter-spacing: var(--cc-title-tracking); line-height: 1.1; }
+    .plan .price small { font-size: 15px; font-weight: 700; color: var(--muted); letter-spacing: 0; }
+    .plan.featured .price small { color: rgba(231, 233, 238, 0.7); }
+    .plan ul { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 10px; font-size: 15px; }
+    .plan li { display: grid; grid-template-columns: 20px 1fr; gap: 8px; align-items: start; }
+    .plan li svg { margin-top: 3px; color: var(--cc-green-ink); }
+    .plan.featured li svg { color: var(--cc-green); }
+    .plan .fine { margin-top: auto; padding-top: 16px; font-size: 13px; color: var(--muted); }
+    .plan.featured .fine { color: rgba(231, 233, 238, 0.65); }
+    @media (max-width: 900px) { .plans { grid-template-columns: 1fr; } }
+
+    /* ---------- Confianza ---------- */
+    .trust { background: var(--cc-surface); }
+    .trust-grid { margin-top: 48px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+    .trust-item { background: #fff; border-radius: 22px; padding: 24px; }
+    .trust-item .ico { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 16px; color: #fff; }
+    .trust-item p { margin: 8px 0 0; color: var(--muted); font-size: 15px; }
+    @media (max-width: 960px) { .trust-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 560px) { .trust-grid { grid-template-columns: 1fr; } }
+
+    /* ---------- Zonas ---------- */
+    .roadmap { margin-top: 48px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; position: relative; }
+    .roadmap::before { content: ""; position: absolute; top: 15px; left: 16px; right: 16px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--cc-blue) 0 33%, var(--cc-niebla) 33%); }
+    .stop { position: relative; padding-right: 24px; }
+    .stop::before { content: ""; display: block; width: 36px; height: 36px; border-radius: 50%; background: #fff; border: 6px solid var(--cc-niebla); margin-bottom: 18px; position: relative; }
+    .stop.now::before { background: var(--cc-green); border-color: #fff; box-shadow: 0 0 0 6px rgba(76, 161, 84, 0.25); }
+    .stop .when { font-size: 13px; font-weight: 800; color: var(--cc-blue-ink); letter-spacing: 0.02em; }
+    .stop h3 { margin-top: 4px; }
+    .stop p { margin: 6px 0 0; color: var(--muted); font-size: 15px; }
+    @media (max-width: 760px) {
+      .roadmap { grid-template-columns: 1fr; gap: 28px; }
+      .roadmap::before { top: 16px; bottom: 16px; left: 15px; right: auto; width: 6px; height: auto; background: linear-gradient(180deg, var(--cc-blue) 0 30%, var(--cc-niebla) 30%); }
+      .stop { padding-left: 56px; padding-right: 0; }
+      .stop::before { position: absolute; left: 0; top: 0; margin: 0; }
+    }
+
+    /* ---------- Formulario ---------- */
+    .join { background-color: var(--cc-navy); background-image: var(--streets); position: relative; }
+    .join::after { content: ""; position: absolute; inset: 0; background: rgba(17, 23, 41, 0.82); pointer-events: none; }
+    .join .wrap { position: relative; z-index: 1; }
+    .form {
+      background: #fff; color: var(--cc-navy);
+      border-radius: 26px; padding: 30px;
+      box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.7);
+      display: grid; gap: 16px;
+    }
+    .form fieldset { border: 0; padding: 0; margin: 0; }
+    .form legend, .form label { font-size: 13.5px; font-weight: 800; display: block; margin-bottom: 8px; }
+    .kinds { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .kind { position: relative; }
+    .kind input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+    .kind span {
+      display: block; height: 100%;
+      border: 1.5px solid var(--cc-line); border-radius: 14px;
+      padding: 11px 12px;
+      font-size: 14px; font-weight: 700; line-height: 1.3;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+    .kind span small { display: block; color: var(--muted); font-weight: 600; font-size: 12.5px; }
+    .kind input:checked + span { border-color: var(--cc-blue); background: var(--cc-blue-soft); }
+    .kind input:focus-visible + span { outline: 3px solid var(--cc-blue); outline-offset: 2px; }
+    .form input[type="text"], .form input[type="email"] {
+      width: 100%;
+      border: 1.5px solid var(--cc-line); border-radius: 14px;
+      padding: 13px 14px;
+      font: inherit; font-size: 16px; color: var(--cc-navy);
+      background: #fff;
+    }
+    .form input[type="text"]:focus { outline: none; border-color: var(--cc-blue); box-shadow: 0 0 0 3px rgba(78, 128, 238, 0.22); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form .btn { width: 100%; margin-top: 4px; }
+    .form-msg { font-size: 14px; font-weight: 700; min-height: 20px; }
+    .form-msg.err { color: var(--cc-red); }
+    .form-legal { font-size: 12.5px; color: var(--muted); margin: 0; }
+    .form-done { text-align: center; padding: 30px 10px; }
+    .form-done .ico { width: 64px; height: 64px; border-radius: 50%; background: var(--cc-green); color: #fff; display: grid; place-items: center; margin: 0 auto 16px; }
+    .form-done p { color: var(--muted); margin: 8px 0 0; }
+    .hp { position: absolute !important; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+    @media (max-width: 520px) {
+      .form { padding: 22px; }
+      .kinds, .form-row { grid-template-columns: 1fr; }
+    }
+
+    /* ---------- Preguntas ---------- */
+    .faq { max-width: 820px; margin: 40px auto 0; }
+    .faq details { border-bottom: 1px solid var(--cc-line); }
+    .faq summary {
+      list-style: none; cursor: pointer;
+      display: flex; justify-content: space-between; align-items: center; gap: 16px;
+      padding: 22px 0;
+      font-size: 18px; font-weight: 800; letter-spacing: -0.015em;
+    }
+    .faq summary::-webkit-details-marker { display: none; }
+    .faq summary::after {
+      content: ""; flex: none; width: 12px; height: 12px;
+      border-right: 2.5px solid var(--cc-blue); border-bottom: 2.5px solid var(--cc-blue);
+      transform: rotate(45deg) translate(-3px, -3px); transition: transform 0.2s ease;
+    }
+    .faq details[open] summary::after { transform: rotate(-135deg) translate(-3px, -3px); }
+    .faq details p { margin: 0 0 22px; color: var(--muted); font-size: 16px; max-width: 40em; }
+
+    /* ---------- Cierre ---------- */
+    .closing { text-align: center; }
+    .closing .video { max-width: 860px; margin: 44px auto 0; }
+    .closing .hero-ctas { justify-content: center; }
+
+    footer { background: var(--cc-navy); color: rgba(231, 233, 238, 0.7); padding: 40px 0 calc(40px + env(safe-area-inset-bottom)); border-top: 1px solid rgba(231, 233, 238, 0.08); }
+    .foot-inner { display: flex; flex-wrap: wrap; gap: 20px 40px; align-items: center; justify-content: space-between; }
+    .foot-links { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 14.5px; font-weight: 700; }
+    .foot-links a { text-decoration: none; color: rgba(231, 233, 238, 0.78); }
+    .foot-links a:hover { color: #fff; }
+    .foot-copy { width: 100%; font-size: 13px; }
+
+    .center { text-align: center; }
+    .center .lead { margin-left: auto; margin-right: auto; }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a href="/" aria-label="CargaCerca, inicio"><img class="cc-logo" src="/brand/logo-horizontal-oscuro.svg" alt="CargaCerca" /></a>
+      <nav class="nav-links" aria-label="Secciones">
+        <a href="#conductores">Conductores</a>
+        <a href="#anfitriones">Anfitriones</a>
+        <a href="#precios">Precios</a>
+        <a href="#preguntas">Preguntas</a>
+      </nav>
+      <a class="btn btn-white" href="/mapa">Abrir el mapa</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero -->
+    <section class="hero dark">
+      <div class="wrap hero-inner">
+        <div>
+          <span class="tag">Arrancamos en Palermo, Belgrano y Recoleta</span>
+          <h1 style="margin-top: 22px">Enchufate al <span>barrio.</span></h1>
+          <p class="lead">Cargá tu auto eléctrico en el cargador de un vecino, estés donde estés. Y si tenés cargador, compartilo unas horas por día y generá ingresos.</p>
+          <div class="hero-ctas">
+            <a class="btn btn-white" href="/mapa">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-7.2 7-12a7 7 0 1 0-14 0c0 4.8 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></svg>
+              Buscar un cargador
+            </a>
+            <a class="btn btn-ghost" href="#sumate">Sumá tu cargador</a>
+          </div>
+          <p class="hero-note">Funciona desde el navegador del celu. Pronto en App Store y Google Play.</p>
+        </div>
+
+        <div class="hero-map" aria-hidden="true">
+          <!-- Composición de "Elementos gráficos" del libro de marca: grilla
+               de calles en diagonal, pines de cargador (azul con casa), pin
+               de auto (verde con halo), ruta azul y etiqueta blanca. Los pines
+               se contra-rotan para que las casas queden derechas. -->
+          <svg viewBox="0 0 520 440" xmlns="http://www.w3.org/2000/svg" font-family="Plus Jakarta Sans, system-ui, sans-serif">
+            <defs>
+              <pattern id="calles" width="80" height="80" patternUnits="userSpaceOnUse">
+                <path d="M0 0H80M0 0V80" stroke="#232B43" stroke-width="8" fill="none"/>
+              </pattern>
+              <g id="casa"><circle r="17" fill="#4E80EE" stroke="#111729" stroke-width="3"/><path d="M-7 1 0-5.5 7 1M-4.8-.6V7h9.6V-.6" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></g>
+            </defs>
+            <rect width="520" height="440" fill="#111729"/>
+            <g transform="rotate(-14 260 220)">
+              <rect x="-240" y="-240" width="1000" height="920" fill="url(#calles)"/>
+              <rect x="-240" y="313" width="1000" height="14" fill="#2B3450"/>
+              <path class="route" d="M160 320H320V160" fill="none" stroke="#4E80EE" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+              <g opacity="0.45">
+                <use href="#casa" transform="translate(80 80) rotate(14)"/>
+                <use href="#casa" transform="translate(480 80) rotate(14)"/>
+                <use href="#casa" transform="translate(480 320) rotate(14)"/>
+                <use href="#casa" transform="translate(240 480) rotate(14)"/>
+                <use href="#casa" transform="translate(0 400) rotate(14)"/>
+              </g>
+              <use href="#casa" transform="translate(400 240) rotate(14)"/>
+              <use href="#casa" transform="translate(80 240) rotate(14)"/>
+              <g transform="translate(320 160) rotate(14) scale(1.25)"><use href="#casa"/></g>
+              <g transform="translate(160 320) rotate(14)">
+                <circle class="pulse" r="30" fill="#4CA154" opacity="0.35"/>
+                <circle r="22" fill="#4CA154" stroke="#fff" stroke-width="3"/>
+                <path d="M-11 2-8.6-4A3 3 0 0 1-5.8-6H5.8a3 3 0 0 1 2.8 2L11 2M-12.5 2h25v6.5a1 1 0 0 1-1 1h-23a1 1 0 0 1-1-1Z" fill="#fff"/>
+                <circle cx="-6.5" cy="10" r="2.6" fill="#4CA154"/><circle cx="6.5" cy="10" r="2.6" fill="#4CA154"/>
+              </g>
+            </g>
+            <g class="map-label">
+              <rect x="296" y="84" width="212" height="38" rx="10" fill="#fff"/>
+              <circle cx="314" cy="103" r="4.5" fill="#4CA154"/>
+              <text x="326" y="108" font-size="13" font-weight="800" fill="#111729">Cargador libre a 3 cuadras</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- Datos de mercado -->
+    <section class="facts" aria-label="El mercado hoy">
+      <div class="wrap facts-grid">
+        <div class="fact"><b>42.238</b><span>autos electrificados patentados en el primer semestre de 2026, el triple que un año antes</span></div>
+        <div class="fact"><b>&lt; 400</b><span>cargadores públicos en todo el país, y la mayoría son lentos</span></div>
+        <div class="fact"><b>15 de 100</b><span>cargadores públicos son rápidos. El resto tarda y queda lejos</span></div>
+        <div class="fact"><b><em>ARS 550</em></b><span>por kWh, nuestro precio sugerido. En la estación sale más de ARS 700</span></div>
+      </div>
+    </section>
+
+    <!-- Conductores -->
+    <section class="block" id="conductores">
+      <div class="wrap split">
+        <div class="video">
+          <video data-autoplay muted loop playsinline preload="none" poster="/brand/poster-conductores.jpg" aria-label="Video para dueños de autos eléctricos">
+            <source src="/brand/video-conductores.mp4" type="video/mp4" />
+          </video>
+        </div>
+        <div>
+          <div class="eyebrow">Para conductores</div>
+          <h2>Andá al cargador libre más cercano.</h2>
+          <p class="lead">Pensado para quienes viven en departamento y no tienen cochera con cargador. Cargás a pocos minutos de tu casa o tu trabajo, más barato que en la estación.</p>
+          <ol class="steps">
+            <li><div><b>Mirá el mapa en vivo</b><span>Ves qué cargadores están libres ahora, con qué conector y a qué precio.</span></div></li>
+            <li><div><b>Confirmá y andá</b><span>La dirección exacta aparece cuando confirmás. Se usan por orden de llegada.</span></div></li>
+            <li><div><b>Enchufá y listo</b><span>El medidor registra cada kWh y corta solo cuando termina la carga.</span></div></li>
+            <li><div><b>Pagá lo justo desde la app</b><span>Sin paquetes prepagos. Sumás puntos para canjear en comercios del barrio.</span></div></li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- Anfitriones -->
+    <section class="block dark" id="anfitriones">
+      <div class="wrap split flip">
+        <div class="video">
+          <video data-autoplay muted loop playsinline preload="none" poster="/brand/poster-anfitriones.jpg" aria-label="Video para anfitriones con cargador">
+            <source src="/brand/video-anfitriones.mp4" type="video/mp4" />
+          </video>
+        </div>
+        <div>
+          <div class="eyebrow">Para anfitriones</div>
+          <h2>Tu cargador pasa el día sin usar. Que trabaje.</h2>
+          <p class="lead">Si tenés un cargador en tu casa, tu edificio o tu comercio, compartilo con conductores del barrio y generá un ingreso extra con algo que ya tenés.</p>
+          <ol class="steps">
+            <li><div><b>Elegís horarios, precio y reglas</b><span>Vos decidís cuándo y cómo se usa. Sugerimos ARS 550 por kWh.</span></div></li>
+            <li><div><b>Te instalamos el medidor</b><span>Registra cada carga y corta la luz al terminar. Así se cobra lo justo.</span></div></li>
+            <li><div><b>Cobrás desde la app</b><span>Cada carga se paga en la app y ves cuánto ganaste.</span></div></li>
+          </ol>
+          <div class="earn">
+            <div class="earn-head">Una carga típica de 15 kWh <small>Ejemplo</small></div>
+            <div class="earn-rows">
+              <div>El conductor paga <b>≈ ARS 9.000</b></div>
+              <div>Vos cobrás <b>≈ ARS 7.000</b></div>
+              <div>La luz te cuesta <b>≈ ARS 3.600</b></div>
+              <div class="total">Te quedan por carga <b>≈ ARS 3.400</b></div>
+            </div>
+            <div class="earn-foot">Con el precio sugerido de ARS 550 por kWh y la tarifa residencial actual.</div>
+          </div>
+          <div class="chips" aria-label="Quiénes pueden ser anfitriones">
+            <span class="chip">Particulares</span>
+            <span class="chip">Consorcios</span>
+            <span class="chip">Comercios</span>
+            <span class="chip">Estacionamientos</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Precios -->
+    <section class="block" id="precios">
+      <div class="wrap">
+        <div class="eyebrow">Precios</div>
+        <h2>Más barato que la estación.<br />Sin paquetes prepagos.</h2>
+        <p class="lead">En la estación de servicio se pagan paquetes de 50 o 100 kWh por adelantado. Con CargaCerca pagás solo lo que cargaste.</p>
+
+        <div class="compare" role="img" aria-label="Precio por kWh. Estación de servicio entre ARS 650 y 800. CargaCerca cerca de ARS 600 con todo incluido.">
+          <div class="bar-row">
+            <span>Estación de servicio<small>paquetes prepagos</small></span>
+            <div class="bar station"><i style="width: 100%">ARS 650 a 800 / kWh</i></div>
+          </div>
+          <div class="bar-row">
+            <span>CargaCerca<small>todo incluido</small></span>
+            <div class="bar cc"><i style="width: 75%">≈ ARS 600 / kWh</i></div>
+          </div>
+        </div>
+
+        <div class="plans">
+          <div class="plan">
+            <div class="who">Conductores</div>
+            <h3>Pagás lo que cargás</h3>
+            <div class="price">USD 0,50 <small>por carga</small></div>
+            <ul>
+              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>La energía al precio de cada anfitrión</li>
+              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Sin suscripción ni paquetes</li>
+              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Puntos en cada carga</li>
+            </ul>
+            <div class="fine">La tarifa de servicio se suma al precio de la energía.</div>
+          </div>
+          <div class="plan featured">
+            <div class="who">Anfitriones</div>
+            <h3>Ganás con cada carga</h3>
+            <div class="price">15% <small>de comisión</small></div>
+            <ul>
+              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Medidor con corte automático instalado</li>
+              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Seguro en cada carga</li>
+              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Vos ponés el precio y los horarios</li>
+            </ul>
+            <div class="fine">Alta única de USD 50, que cubre parte del medidor.</div>
+          </div>
+          <div class="plan">
+            <div class="who">Comercios y edificios</div>
+            <h3>Más visibilidad en el mapa</h3>
+            <div class="price">USD 15 <small>por mes</small></div>
+            <ul>
+              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Plan Pro para comercios y edificios</li>
+              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Pin destacado por USD 40 al mes</li>
+              <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Clientes que esperan mientras cargan</li>
+            </ul>
+            <div class="fine">Para consorcios, comercios y estacionamientos.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Confianza -->
+    <section class="block trust">
+      <div class="wrap">
+        <div class="center">
+          <div class="eyebrow">Confianza</div>
+          <h2>Como prestarle algo a un vecino.<br />Pero con todo en regla.</h2>
+        </div>
+        <div class="trust-grid">
+          <div class="trust-item">
+            <div class="ico" style="background: var(--cc-blue)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4.5 13.5H11L10 22L19.5 9.5H13L13 2Z" fill="currentColor" stroke="none"/></svg></div>
+            <h3>Medidor con corte automático</h3>
+            <p>Registra los kWh de cada carga y corta la luz al terminar. Queda registro de todo.</p>
+          </div>
+          <div class="trust-item">
+            <div class="ico" style="background: var(--cc-green)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.2-4 4.3-6 8-6s6.8 2 8 6"/></svg></div>
+            <h3>Identidad verificada</h3>
+            <p>Conductores y anfitriones verifican su identidad y se califican después de cada carga.</p>
+          </div>
+          <div class="trust-item">
+            <div class="ico" style="background: var(--cc-navy)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.3 7.5 9.5 4.3-1.2 7.5-4.9 7.5-9.5V6Z"/><path d="m8.8 12 2.3 2.3 4.1-4.3"/></svg></div>
+            <h3>Seguro en cada carga</h3>
+            <p>Cada carga que pasa por la app está asegurada. Otra razón para no arreglar por fuera.</p>
+          </div>
+          <div class="trust-item">
+            <div class="ico" style="background: var(--cc-blue)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-7.2 7-12a7 7 0 1 0-14 0c0 4.8 7 12 7 12Z"/><circle cx="12" cy="9" r="2.5"/></svg></div>
+            <h3>Dirección al confirmar</h3>
+            <p>La dirección exacta del anfitrión se ve recién cuando el conductor confirma la carga.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Zonas -->
+    <section class="block" id="zonas">
+      <div class="wrap">
+        <div class="eyebrow">Dónde estamos</div>
+        <h2>Arrancamos por tu barrio.</h2>
+        <p class="lead">Primero juntamos muchos cargadores en pocas cuadras, para que siempre haya uno libre cerca. Después seguimos creciendo.</p>
+        <div class="roadmap">
+          <div class="stop now">
+            <div class="when">Primero</div>
+            <h3>Recoleta, Palermo y Belgrano</h3>
+            <p>Comunas 2, 13 y 14 de la Ciudad, con Núñez y Colegiales.</p>
+          </div>
+          <div class="stop">
+            <div class="when">2028</div>
+            <h3>Toda la Ciudad y zona norte</h3>
+            <p>Más anfitriones, consorcios y comercios en la red.</p>
+          </div>
+          <div class="stop">
+            <div class="when">Después</div>
+            <h3>AMBA, Córdoba y Rosario</h3>
+            <p>La misma red colaborativa en las ciudades con más autos eléctricos.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sumate -->
+    <section class="block join dark" id="sumate">
+      <div class="wrap split">
+        <div>
+          <div class="eyebrow">Sumate</div>
+          <h2>Sumá tu cargador a la red.</h2>
+          <p class="lead">Dejanos tus datos y te escribimos para contarte cómo empezar. Si manejás un auto eléctrico, también anotate y te avisamos cuando haya cargadores en tu zona.</p>
+          <div class="chips">
+            <span class="chip">Modelo de acta para consorcios</span>
+            <span class="chip">Instalación por electricista matriculado</span>
+          </div>
+        </div>
+
+        <form class="form" id="leadForm" novalidate>
+          <div id="leadFields">
+            <fieldset>
+              <legend>Quiero sumarme como</legend>
+              <div class="kinds">
+                <label class="kind"><input type="radio" name="kind" value="particular" checked /><span>Anfitrión<small>Tengo cargador en casa</small></span></label>
+                <label class="kind"><input type="radio" name="kind" value="consorcio" /><span>Consorcio<small>Administro un edificio</small></span></label>
+                <label class="kind"><input type="radio" name="kind" value="comercio" /><span>Comercio<small>Tengo un local o estacionamiento</small></span></label>
+                <label class="kind"><input type="radio" name="kind" value="conductor" /><span>Conductor<small>Busco dónde cargar</small></span></label>
+              </div>
+            </fieldset>
+            <div style="margin-top: 16px">
+              <label for="fName">Tu nombre</label>
+              <input type="text" id="fName" name="name" autocomplete="name" maxlength="80" required />
+            </div>
+            <div class="form-row" style="margin-top: 16px">
+              <div>
+                <label for="fContact">Email o WhatsApp</label>
+                <input type="text" id="fContact" name="contact" autocomplete="email" maxlength="120" required />
+              </div>
+              <div>
+                <label for="fZone">Barrio</label>
+                <input type="text" id="fZone" name="zone" autocomplete="address-level2" maxlength="80" placeholder="Palermo" />
+              </div>
+            </div>
+            <div class="hp" aria-hidden="true"><label>Sitio web <input type="text" name="website" tabindex="-1" autocomplete="off" /></label></div>
+            <div class="form-msg" id="leadMsg" role="status" aria-live="polite"></div>
+            <button class="btn btn-navy" type="submit" id="leadBtn">Quiero sumarme</button>
+            <p class="form-legal" style="margin-top: 12px">Usamos tus datos solo para contactarte por CargaCerca.</p>
+          </div>
+          <div class="form-done" id="leadDone" hidden>
+            <div class="ico"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+            <h3>Listo, ya estás en la lista.</h3>
+            <p>Te escribimos pronto para contarte los próximos pasos.</p>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Preguntas -->
+    <section class="block" id="preguntas">
+      <div class="wrap">
+        <div class="center">
+          <div class="eyebrow">Preguntas frecuentes</div>
+          <h2>Lo que nos preguntan seguido.</h2>
+        </div>
+        <div class="faq">
+          <details>
+            <summary>¿Puedo reservar un cargador?</summary>
+            <p>No. Los cargadores se usan por orden de llegada, como en el barrio. En el mapa ves en tiempo real cuáles están libres y vas al más cercano.</p>
+          </details>
+          <details>
+            <summary>¿Sirve para mi auto?</summary>
+            <p>Sí, si es eléctrico o híbrido enchufable. En la app filtrás por conector (Tipo 2, J1772, CCS o CHAdeMO) y por potencia. Apuntamos a la carga de todos los días, no a la carga rápida de ruta.</p>
+          </details>
+          <details>
+            <summary>¿Es seguro abrir mi cochera a alguien que no conozco?</summary>
+            <p>Todos los conductores verifican su identidad y se califican después de cada carga. La dirección exacta se muestra recién cuando confirman, y cada carga tiene seguro.</p>
+          </details>
+          <details>
+            <summary>¿Cómo cobro como anfitrión?</summary>
+            <p>El conductor paga en la app y vos recibís lo que cargó al precio que elegiste, menos la comisión del 15%. El medidor registra cada kWh, así que no hay discusiones.</p>
+          </details>
+          <details>
+            <summary>Vivo en un edificio. ¿Qué necesito?</summary>
+            <p>La aprobación del consorcio. Te damos un modelo de acta para presentarlo, y la instalación la hace un electricista matriculado.</p>
+          </details>
+          <details>
+            <summary>¿Por qué no cargo directo en la estación de servicio?</summary>
+            <p>Podés, pero hay pocas, suelen quedar lejos y te piden comprar paquetes de 50 o 100 kWh por adelantado. Con CargaCerca cargás a pocas cuadras y pagás solo lo que usaste.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cierre -->
+    <section class="block dark closing">
+      <div class="wrap">
+        <h2>Cuando salís, cargás cerca.<br />Cuando no lo usás, tu cargador trabaja.</h2>
+        <div class="video">
+          <video data-autoplay muted loop playsinline preload="none" poster="/brand/poster-ambos.jpg" aria-label="Video sobre conductores y anfitriones">
+            <source src="/brand/video-ambos.mp4" type="video/mp4" />
+          </video>
+        </div>
+        <div class="hero-ctas">
+          <a class="btn btn-white" href="/mapa">Buscar un cargador</a>
+          <a class="btn btn-ghost" href="#sumate">Sumá tu cargador</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap foot-inner">
+      <img class="cc-logo" src="/brand/logo-horizontal-oscuro.svg" alt="CargaCerca" />
+      <nav class="foot-links" aria-label="Pie de página">
+        <a href="/mapa">Mapa de cargadores</a>
+        <a href="#anfitriones">Ser anfitrión</a>
+        <a href="#precios">Precios</a>
+        <a href="#preguntas">Preguntas</a>
+      </nav>
+      <div class="foot-copy">© 2026 CargaCerca. Enchufate al barrio.</div>
+    </div>
+  </footer>
+
+  <script src="/landing.js"></script>
+</body>
+</html>

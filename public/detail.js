@@ -46,14 +46,16 @@ function fmtClock(iso) {
 }
 
 // --- Charts ---
+Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+
 const baseOpts = {
   animation: false,
   responsive: true,
   maintainAspectRatio: false,
   plugins: { legend: { display: false } },
   scales: {
-    x: { ticks: { color: '#9aa3b2', maxTicksLimit: 6 }, grid: { color: '#2a2f3a' } },
-    y: { ticks: { color: '#9aa3b2' }, grid: { color: '#2a2f3a' }, beginAtZero: true },
+    x: { ticks: { color: '#9AA1B2', maxTicksLimit: 6 }, grid: { color: '#2C303B' } },
+    y: { ticks: { color: '#9AA1B2' }, grid: { color: '#2C303B' }, beginAtZero: true },
   },
   elements: { point: { radius: 0 } },
 };
@@ -67,9 +69,10 @@ function makeChart(id, color) {
 }
 
 const charts = {
-  current: makeChart('chartCurrent', '#22c55e'),
-  power: makeChart('chartPower', '#3b82f6'),
-  voltage: makeChart('chartVoltage', '#eab308'),
+  // Colores de marca: verde = corriente que carga el auto, azul = energía.
+  current: makeChart('chartCurrent', '#4CA154'),
+  power: makeChart('chartPower', '#4E80EE'),
+  voltage: makeChart('chartVoltage', '#E7E9EE'),
 };
 
 function updateChart(chart, labels, data) {
@@ -130,6 +133,8 @@ async function refresh() {
         <div class="item"><div class="label">Corriente actual</div><div class="value">${n(s.currentMa / 1000)} A</div></div>
         <div class="item"><div class="label">Potencia actual</div><div class="value">${n(s.powerMw / 1000)} W</div></div>
         <div class="item"><div class="label">Energía entregada</div><div class="value">${n(s.energyWh)} Wh</div></div>
+        <div class="item"><div class="label">Conductor</div><div class="value">${esc(s.driverName || 'Sin identificar')}</div></div>
+        <div class="item"><div class="label">Monto en curso</div><div class="value">${s.currency || ''} ${n(s.amount)}</div></div>
       </div>`;
   }
 
@@ -140,5 +145,6 @@ async function refresh() {
   updateChart(charts.voltage, labels, measurements.map((x) => x.busVoltage));
 }
 
+mountUserMenu(document.getElementById('userMenu'));
 refresh();
 setInterval(refresh, 2000);

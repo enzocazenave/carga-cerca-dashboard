@@ -1,13 +1,13 @@
 'use strict';
 
-// Service worker de la app cliente (mapa + vista de cargador). El panel
-// admin ("/", "/chargers/:id") no lo usa. Estrategia:
+// Service worker de la app cliente (mapa + vista de cargador). La landing
+// ("/") y el panel admin ("/admin", "/chargers/:id") no lo registran. Estrategia:
 //  - Datos en vivo (/api/*) y todo lo cross-origin (tiles del mapa, CDNs):
 //    directo a la red, nunca cacheado (necesitan estar siempre frescos).
 //  - Assets propios (HTML/JS/manifest/íconos): stale-while-revalidate,
 //    para que abra instantáneo y quede utilizable con mala conexión.
 
-const CACHE_NAME = 'cargacerca-v1';
+const CACHE_NAME = 'cargacerca-v3';
 const APP_SHELL = [
   '/mapa',
   '/mapa.js',
@@ -15,6 +15,10 @@ const APP_SHELL = [
   '/manifest.webmanifest',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
+  '/icons/apple-touch-icon.png',
+  '/brand.css',
+  '/conductor.js',
+  '/brand/logo-horizontal-claro.svg',
 ];
 
 self.addEventListener('install', (event) => {
@@ -43,6 +47,9 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return; // tiles del mapa, CDNs
   if (url.pathname.startsWith('/api/')) return; // estado en vivo: siempre red
+  // Páginas con login: nunca desde caché (después de "Salir" no tienen que
+  // seguir apareciendo, y dependen de la sesión).
+  if (/^\/(admin|anfitrion|chargers|login)(\/|$)/.test(url.pathname)) return;
 
   event.respondWith(
     caches.open(CACHE_NAME).then(async (cache) => {

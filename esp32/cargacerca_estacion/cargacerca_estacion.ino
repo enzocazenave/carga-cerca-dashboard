@@ -204,20 +204,22 @@ const int BTN_H = 58;
 // =====================================================
 // PALETA LIGHT
 // =====================================================
+// Colores del libro de marca (public/brand.css) pasados a RGB565.
+// Entre paréntesis, el hex original.
 
-const uint16_t COLOR_BG          = 0xFFDF;
+const uint16_t COLOR_BG          = 0xF7BF; // fondo claro (#F4F5F8)
 const uint16_t COLOR_CARD        = 0xFFFF;
 const uint16_t COLOR_CARD_ALT    = 0xF7BE;
 
-const uint16_t COLOR_GREEN       = 0x2587;
-const uint16_t COLOR_GREEN_LIGHT = 0xD6F3;
-const uint16_t COLOR_GREEN_DARK  = 0x1484;
+const uint16_t COLOR_GREEN       = 0x4D0A; // Verde carga (#4CA154)
+const uint16_t COLOR_GREEN_LIGHT = 0xDF7B; // (#DCEFDD)
+const uint16_t COLOR_GREEN_DARK  = 0x3C28; // (#3A8442)
 
-const uint16_t COLOR_TEXT        = 0x2124;
-const uint16_t COLOR_MUTED       = 0x7BEF;
+const uint16_t COLOR_TEXT        = 0x10A5; // Navy noche (#111729)
+const uint16_t COLOR_MUTED       = 0x5B0E; // (#5B6275)
 
-const uint16_t COLOR_BLUE        = 0x3D7F;
-const uint16_t COLOR_BORDER      = 0xDEFB;
+const uint16_t COLOR_BLUE        = 0x4C1D; // Azul eléctrico (#4E80EE)
+const uint16_t COLOR_BORDER      = 0xE75D; // Niebla (#E7E9EE)
 const uint16_t COLOR_WARNING     = 0xFD20;
 
 // =====================================================
@@ -415,13 +417,18 @@ void dibujarHeader(
   const char* estadoTexto,
   uint16_t colorEstado
 ) {
+  // Wordmark bicolor como en el logo sobre fondo claro: "Carga" en navy
+  // y "Cerca" en verde. tituloIzquierda deja el cursor al final de
+  // "Carga", así que "Cerca" sigue en la misma línea base.
   tituloIzquierda(
-    "CargaCerca",
+    "Carga",
     15,
     12,
     FONT_BRAND,
     COLOR_TEXT
   );
+  tft.setTextColor(COLOR_GREEN);
+  tft.print("Cerca");
 
   int pillW = 92;
   int pillH = 24;
@@ -1409,13 +1416,13 @@ String paginaFormularioSetup(
   html += F("<!doctype html><html lang='es'><head><meta charset='utf-8'>");
   html += F("<meta name='viewport' content='width=device-width,initial-scale=1'>");
   html += F("<title>Configurar CargaCerca</title><style>");
-  html += F("*{box-sizing:border-box}body{margin:0;background:#f5f7f6;color:#1d2924;font-family:system-ui,sans-serif}");
-  html += F("main{max-width:520px;margin:auto;padding:24px 18px}h1{margin:0 0 6px;font-size:28px}p{color:#607068;margin:0 0 24px}");
-  html += F("form{background:white;border:1px solid #dce5e0;border-radius:18px;padding:20px;box-shadow:0 10px 30px #183b2b12}");
-  html += F("label{display:block;font-weight:700;margin:18px 0 7px}input,select{width:100%;min-height:52px;border:2px solid #cad7d0;border-radius:12px;padding:0 14px;font-size:18px;background:white;font-family:inherit}");
-  html += F("input:focus,select:focus{outline:3px solid #86d7ad;border-color:#23845a}button{width:100%;min-height:56px;margin-top:24px;border:0;border-radius:14px;background:#23845a;color:white;font-size:18px;font-weight:800}");
-  html += F(".aviso{background:#fff2cf;color:#674d00;padding:12px;border-radius:10px;margin-bottom:12px}.ayuda{font-size:14px;margin-top:7px;color:#607068}</style></head><body><main>");
-  html += F("<h1>CargaCerca</h1><p>Configura la estacion sin usar el teclado resistivo.</p>");
+  html += F("*{box-sizing:border-box}body{margin:0;background:#f4f5f8;color:#111729;font-family:system-ui,sans-serif}");
+  html += F("main{max-width:520px;margin:auto;padding:24px 18px}h1{margin:0 0 6px;font-size:28px}p{color:#5b6275;margin:0 0 24px}");
+  html += F("form{background:white;border:1px solid #e7e9ee;border-radius:18px;padding:20px;box-shadow:0 10px 30px #11172912}");
+  html += F("label{display:block;font-weight:700;margin:18px 0 7px}input,select{width:100%;min-height:52px;border:2px solid #d5d9e1;border-radius:12px;padding:0 14px;font-size:18px;background:white;font-family:inherit}");
+  html += F("input:focus,select:focus{outline:3px solid #a7c0f7;border-color:#111729}button{width:100%;min-height:56px;margin-top:24px;border:0;border-radius:14px;background:#111729;color:white;font-size:18px;font-weight:800}");
+  html += F(".aviso{background:#fff2cf;color:#674d00;padding:12px;border-radius:10px;margin-bottom:12px}.ayuda{font-size:14px;margin-top:7px;color:#5b6275}</style></head><body><main>");
+  html += F("<h1>Carga<span style='color:#4ca154'>Cerca</span></h1><p>Configura la estacion sin usar el teclado resistivo.</p>");
 
   if (mensaje.length() > 0) {
     html += F("<div class='aviso'>");
@@ -1458,7 +1465,7 @@ String paginaEstadoSetup(const String &titulo, const String &detalle, bool recar
   html.reserve(1800);
   html += F("<!doctype html><html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>");
   if (recargar) html += F("<meta http-equiv='refresh' content='2;url=/estado'>");
-  html += F("<style>body{margin:0;background:#f5f7f6;color:#1d2924;font-family:system-ui,sans-serif;text-align:center;padding:60px 20px}section{max-width:460px;margin:auto;background:white;padding:28px;border-radius:18px;border:1px solid #dce5e0}h1{font-size:25px}p{color:#607068;line-height:1.5}a{display:block;margin-top:24px;padding:16px;background:#23845a;color:white;border-radius:12px;text-decoration:none;font-weight:800}</style></head><body><section><h1>");
+  html += F("<style>body{margin:0;background:#f4f5f8;color:#111729;font-family:system-ui,sans-serif;text-align:center;padding:60px 20px}section{max-width:460px;margin:auto;background:white;padding:28px;border-radius:18px;border:1px solid #e7e9ee}h1{font-size:25px}p{color:#5b6275;line-height:1.5}a{display:block;margin-top:24px;padding:16px;background:#111729;color:white;border-radius:12px;text-decoration:none;font-weight:800}</style></head><body><section><h1>");
   html += escaparHtml(titulo);
   html += F("</h1><p>");
   html += escaparHtml(detalle);

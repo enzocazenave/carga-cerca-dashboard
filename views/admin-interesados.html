@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>CargaCerca · Interesados</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="/brand.css" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <a class="brand" href="/admin"><img class="cc-logo" src="/brand/logo-horizontal-oscuro.svg" alt="CargaCerca" /></a>
+      <nav class="nav">
+        <a href="/admin">Cargadores</a>
+        <a href="/admin/anfitriones">Anfitriones</a>
+        <a href="/admin/interesados" class="active">Interesados</a>
+        <a href="/mapa">Mapa</a>
+      </nav>
+      <div class="user-menu" id="userMenu"></div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="page-head">
+      <div>
+        <h1>Interesados</h1>
+        <div class="sub">Lo que dejan en el formulario de la landing. Son datos personales, usalos solo para contactarlos.</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="sessions-table">
+        <thead><tr><th>Fecha</th><th>Tipo</th><th>Nombre</th><th>Contacto</th><th>Barrio</th></tr></thead>
+        <tbody id="leadsBody"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script src="/panel.js"></script>
+  <script src="/admin-interesados.js"></script>
+</body>
+</html>

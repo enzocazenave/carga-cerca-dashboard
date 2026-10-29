@@ -1,0 +1,45 @@
+/*
+ * Tokens de marca de CargaCerca (libro de marca v1.0, octubre 2026).
+ * Lo cargan todas las vistas (landing, mapa, vista cliente y panel admin)
+ * antes de sus propios estilos, que usan estas variables en vez de hex
+ * sueltos. La fuente (Plus Jakarta Sans) se pide en cada HTML con <link>
+ * a Google Fonts; si no carga (offline), cae a la fuente del sistema.
+ *
+ * Los cinco colores de la paleta van tal cual. Las variantes "-ink" son
+ * versiones más oscuras del verde y el azul SOLO para texto chico sobre
+ * fondo claro: el verde y el azul de marca no llegan a contraste AA
+ * (3,2:1 y 3,7:1 sobre blanco). Para superficies, íconos, pines y textos
+ * grandes se usan los de marca.
+ */
+:root {
+  /* Paleta oficial */
+  --cc-navy: #111729;     /* Navy noche: fondo principal, textos, la casa del logo */
+  --cc-green: #4CA154;    /* Verde carga: el auto, "Cerca", movilidad sustentable */
+  --cc-blue: #4E80EE;     /* Azul eléctrico: energía, cable, rayo, rutas y acciones */
+  --cc-grafito: #181A20;  /* Grafito: fondo del modo oscuro */
+  --cc-niebla: #E7E9EE;   /* Niebla: textos sobre oscuro y superficies suaves */
+
+  /* Derivados */
+  --cc-green-ink: #2E7D36;
+  --cc-blue-ink: #2F5FCC;
+  --cc-green-deep: #3E8A46;
+  --cc-blue-deep: #3567D9;
+  --cc-green-soft: #E3F1E4;
+  --cc-blue-soft: #E4ECFD;
+  --cc-surface: #F4F5F8;  /* fondo de página claro, como las tarjetas del libro de marca */
+  --cc-muted: #5B6275;
+  --cc-line: #E7E9EE;
+  --cc-amber: #B45309;
+  --cc-amber-soft: #FDF0E1;
+  --cc-red: #D92D20;
+  --cc-red-soft: #FDE8E7;
+
+  --cc-font: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  /* Títulos: ExtraBold 800 con interletrado -3% */
+  --cc-title-tracking: -0.03em;
+}
+
+/* Logo como <img> con el SVG original del kit (nunca recoloreado ni
+ * deformado: ver "Usos incorrectos"). Se fija solo el alto: 36px deja la
+ * versión horizontal en ~122px de ancho, arriba del mínimo de 120px. */
+.cc-logo { display: block; height: 36px; width: auto; }

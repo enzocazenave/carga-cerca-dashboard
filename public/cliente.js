@@ -10,7 +10,7 @@ $('techLink').href = `/chargers/${encodeURIComponent(chargerId)}`;
 const VIEW = {
   'Cargando': { cls: 'charging', icon: 'bolt', title: 'Cargando', sub: 'Velocidad de carga' },
   'Consumo bajo': { cls: 'low', icon: 'batteryLow', title: 'Carga lenta', sub: 'Consumo bajo' },
-  'Disponible': { cls: 'idle', icon: 'plug', title: 'Listo para cargar', sub: 'Enchufá tu auto al cargador' },
+  'Disponible': { cls: 'idle', icon: 'plug', title: 'Cargador libre', sub: 'Enchufá tu auto al cargador' },
   'Esperando tarjeta': { cls: 'idle', icon: 'card', title: 'Acercá tu tarjeta', sub: 'Apoyá tu tarjeta o llavero en el lector del cargador' },
   'Tarjeta leída · esperando inicio': { cls: 'low', icon: 'arrowRightCircle', title: 'Tarjeta leída', sub: 'Tocá "Iniciar carga" en la pantalla del cargador' },
   'Carga finalizada': { cls: 'idle', icon: 'checkCircle', title: 'Carga finalizada', sub: 'Ya podés retirar el cable' },
@@ -61,7 +61,7 @@ function fmtAgo(iso) {
 // ---- Chart ----
 const chart = new Chart($('chart'), {
   type: 'line',
-  data: { labels: [], datasets: [{ data: [], borderColor: '#16a34a', borderWidth: 2.5, fill: true, tension: 0.35, pointRadius: 0 }] },
+  data: { labels: [], datasets: [{ data: [], borderColor: '#4CA154', borderWidth: 2.5, fill: true, tension: 0.35, pointRadius: 0 }] },
   options: {
     animation: false,
     responsive: true,
@@ -76,8 +76,8 @@ const chart = new Chart($('chart'), {
 // gradiente de relleno
 const gctx = $('chart').getContext('2d');
 const grad = gctx.createLinearGradient(0, 0, 0, 120);
-grad.addColorStop(0, 'rgba(22,163,74,0.28)');
-grad.addColorStop(1, 'rgba(22,163,74,0)');
+grad.addColorStop(0, 'rgba(76,161,84,0.28)');
+grad.addColorStop(1, 'rgba(76,161,84,0)');
 chart.data.datasets[0].backgroundColor = grad;
 
 async function api(path, opts) {
@@ -88,18 +88,12 @@ async function api(path, opts) {
 }
 
 // ---- Quiero cargar mi auto ----
-// El nombre se pide una sola vez y queda en este navegador: así la próxima
-// visita ya no pregunta y el flujo se siente instantáneo.
-const NAME_KEY = 'cc_client_name';
-const getMyName = () => (localStorage.getItem(NAME_KEY) || '').trim() || null;
-
+// El nombre se pide una sola vez y queda en este navegador (ver
+// /public/conductor.js): así la próxima visita ya no pregunta y el flujo
+// se siente instantáneo.
 async function pedirCarga() {
-  let name = getMyName();
-  if (!name) {
-    name = (prompt('¿Cómo te llamás? Así te saludamos en el cargador.') || '').trim();
-    if (!name) return;
-    localStorage.setItem(NAME_KEY, name);
-  }
+  const name = askMyName();
+  if (!name) return;
 
   const btn = $('requestBtn');
   btn.disabled = true;
@@ -108,9 +102,10 @@ async function pedirCarga() {
     await api(`/api/chargers/${encodeURIComponent(chargerId)}/request`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name }),
+      body: requestBody(name),
     });
     await refresh();
+    cargarMiReputacion();
   } catch (e) {
     alert(e.message);
     btn.disabled = false;
@@ -144,7 +139,7 @@ function actualizarRequestCard(charger) {
       hint.textContent = 'Acercate y apoyá tu tarjeta en el cargador';
       hint.className = 'request-hint mine';
     } else {
-      btn.textContent = 'Cargador reservado';
+      btn.textContent = 'Cargador ocupado';
       hint.textContent = `${pr.name} está por cargar acá`;
       hint.className = 'request-hint';
     }
@@ -154,6 +149,24 @@ function actualizarRequestCard(charger) {
     hint.textContent = '';
     hint.className = 'request-hint';
   }
+}
+
+// Reputación del conductor (reseñas de los anfitriones). Solo si este
+// navegador ya pidió cargar alguna vez: si no, todavía no tiene id.
+async function cargarMiReputacion() {
+  const id = localStorage.getItem(DRIVER_ID_KEY);
+  if (!id) return;
+  let perfil;
+  try {
+    perfil = await api(`/api/drivers/${encodeURIComponent(id)}`);
+  } catch {
+    return;
+  }
+  const rep = fmtReputation(perfil.reputation);
+  $('myRep').innerHTML = rep
+    ? `Tu reputación <b>${rep.split(' · ')[0]}</b> · ${rep.split(' · ')[1]}`
+    : 'Todavía no tenés reseñas de anfitriones';
+  $('myRep').hidden = false;
 }
 
 async function loadConfig() {
@@ -184,6 +197,7 @@ async function refresh() {
   $('sub').textContent = v.sub;
 
   if (charger.status === 'Carga finalizada' && prevStatus !== 'Carga finalizada') {
+    cargarMiReputacion();
     $('badge').classList.add('pop');
     setTimeout(() => $('badge').classList.remove('pop'), 600);
   }
@@ -192,14 +206,15 @@ async function refresh() {
   actualizarRequestCard(charger);
 
   // Si la solicitud pendiente es la mía, personalizamos el mensaje del
-  // cargador (lo mismo que ve en su pantalla física la ESP32).
+  // cargador (lo mismo que ve en su pantalla física la ESP32). Sin signos
+  // de exclamación: tono de voz del libro de marca.
   const myName = getMyName();
   const pr = charger.pendingRequest;
   if (pr && myName && pr.name === myName) {
     if (charger.status === 'Esperando tarjeta') {
-      $('sub').textContent = `¡Hola, ${myName}! Acercá tu tarjeta al cargador.`;
+      $('sub').textContent = `Hola ${myName}, acercá tu tarjeta al cargador`;
     } else if (charger.status === 'Tarjeta leída · esperando inicio') {
-      $('sub').textContent = `¡Hola, ${myName}! Tocá "Iniciar carga" en la pantalla.`;
+      $('sub').textContent = `Hola ${myName}, tocá "Iniciar carga" en la pantalla`;
     }
   }
 
@@ -216,16 +231,18 @@ async function refresh() {
   const s = charger.session;
   if (s) {
     sessionStartMs = Date.parse(s.start);
-    const energyWh = s.energyWh * 1000;
+    // billedEnergyWh y amount vienen calculados del servidor (con la escala
+    // de demo y el precio de la sesión): es lo mismo que queda registrado
+    // en el historial del anfitrión.
+    const energyWh = s.billedEnergyWh;
     $('energy').innerHTML = fmtEnergy(energyWh);
     const km = (energyWh / 1000) * (cfg.kmPerKwh || 6);
     $('energyKm').textContent = `≈ ${km.toFixed(1)} km de autonomía`;
     $('since').textContent = `Desde las ${fmtClock(s.start)}`;
 
-    if (cfg.pricePerKwh > 0) {
-      const cost = (energyWh / 1000) * cfg.pricePerKwh;
-      $('costValue').textContent = fmtMoney(cost);
-      $('costHint').textContent = `${fmtMoney(cfg.pricePerKwh)} / kWh`;
+    if (s.pricePerKwh > 0) {
+      $('costValue').textContent = fmtMoney(s.amount);
+      $('costHint').textContent = `${fmtMoney(s.pricePerKwh)} / kWh`;
       $('costCard').hidden = false;
     } else {
       $('costCard').hidden = true;
@@ -265,6 +282,7 @@ function tickDuration() {
 (async () => {
   await loadConfig();
   await refresh();
+  cargarMiReputacion();
   setInterval(refresh, 2000);
   setInterval(tickDuration, 1000);
 })();

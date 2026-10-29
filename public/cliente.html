@@ -3,36 +3,41 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#eef2f6" />
+  <meta name="theme-color" content="#F4F5F8" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="color-scheme" content="light" />
   <title>CargaCerca · Mi carga</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="/brand.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/pwa.js" defer></script>
   <style>
     :root {
-      --green: #16a34a;
-      --green-soft: #22c55e;
-      --ink: #0f172a;
-      --muted: #64748b;
+      --ink: var(--cc-navy);
+      --muted: var(--cc-muted);
       --card: #ffffff;
-      --page: #eef2f6;
-      --ring: rgba(15, 23, 42, 0.06);
-      --disabled-bg: #cbd5e1;
-      --disabled-fg: #64748b;
-      --banner-bg: #fee2e2;
-      --banner-fg: #b91c1c;
+      --page: var(--cc-surface);
+      --ring: rgba(17, 23, 41, 0.07);
+      --disabled-bg: var(--cc-niebla);
+      --disabled-fg: var(--cc-muted);
+      --banner-bg: var(--cc-red-soft);
+      --banner-fg: var(--cc-red);
     }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html, body { margin: 0; overflow-x: hidden; max-width: 100%; }
     canvas { max-width: 100%; }
     [hidden] { display: none !important; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+      font-family: var(--cc-font);
+      font-weight: 500;
       background: var(--page);
       color: var(--ink);
       line-height: 1.45;
@@ -55,8 +60,7 @@
       justify-content: space-between;
       padding: 2px 4px;
     }
-    .logo { font-weight: 800; letter-spacing: -0.02em; font-size: 17px; color: inherit; text-decoration: none; }
-    .logo b { color: var(--green); }
+    .logo { display: block; }
     .live {
       display: inline-flex;
       align-items: center;
@@ -71,11 +75,11 @@
       border-radius: 50%;
       background: #cbd5e1;
     }
-    .live.on { color: var(--green); }
-    .live.on::before { background: var(--green-soft); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); animation: ping 1.8s ease-out infinite; }
+    .live.on { color: var(--cc-green-ink); }
+    .live.on::before { background: var(--cc-green); box-shadow: 0 0 0 0 rgba(76, 161, 84, 0.5); animation: ping 1.8s ease-out infinite; }
 
     .place { padding: 0 4px; }
-    .place h1 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
+    .place h1 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: var(--cc-title-tracking); line-height: 1.15; }
     .place p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
 
     /* ---- Pedir carga ---- */
@@ -93,15 +97,23 @@
       font-weight: 800;
       letter-spacing: -0.01em;
       color: #fff;
-      background: linear-gradient(135deg, #16a34a, #0d9488);
-      box-shadow: 0 12px 26px -12px rgba(22, 163, 74, 0.6);
+      background: var(--cc-navy);
+      box-shadow: 0 12px 26px -12px rgba(17, 23, 41, 0.55);
       transition: transform 0.1s ease, opacity 0.2s ease;
     }
     .request-btn svg { flex: none; }
     .request-btn:active { transform: scale(0.98); }
     .request-btn[disabled] { background: var(--disabled-bg); box-shadow: none; color: var(--disabled-fg); }
     .request-hint { text-align: center; font-size: 13px; font-weight: 600; color: var(--muted); min-height: 16px; }
-    .request-hint.mine { color: var(--green); }
+    .request-hint.mine { color: var(--cc-green-ink); }
+    /* Reputación del conductor: la arman las reseñas de los anfitriones */
+    .my-rep {
+      align-self: center;
+      font-size: 12.5px; font-weight: 700; color: var(--muted);
+      background: var(--card); border-radius: 999px; padding: 5px 12px;
+      box-shadow: 0 1px 3px var(--ring);
+    }
+    .my-rep b { color: #B7791F; }
 
     /* ---- Hero ---- */
     .hero {
@@ -110,15 +122,17 @@
       border-radius: 26px;
       padding: 28px 22px 26px;
       color: #fff;
-      background: linear-gradient(165deg, #334155, #1e293b);
-      box-shadow: 0 18px 40px -18px rgba(15, 23, 42, 0.45);
+      background: linear-gradient(165deg, #2A3045, var(--cc-navy));
+      box-shadow: 0 18px 40px -18px rgba(17, 23, 41, 0.45);
       text-align: center;
       transition: background 0.4s ease;
     }
-    .hero.charging { background: linear-gradient(165deg, #16a34a, #0d9488); }
-    .hero.low { background: linear-gradient(165deg, #d97706, #b45309); }
-    .hero.idle { background: linear-gradient(165deg, #2563eb, #1d4ed8); }
-    .hero.off { background: linear-gradient(165deg, #475569, #334155); }
+    /* Colores de marca por estado: verde = cargando (el auto), azul =
+       listo (la energía del anfitrión), navy = sin señal. */
+    .hero.charging { background: linear-gradient(165deg, var(--cc-green), var(--cc-green-deep)); }
+    .hero.low { background: linear-gradient(165deg, #D97706, var(--cc-amber)); }
+    .hero.idle { background: linear-gradient(165deg, var(--cc-blue), var(--cc-blue-deep)); }
+    .hero.off { background: linear-gradient(165deg, #2A3045, var(--cc-navy)); }
 
     .hero-badge {
       width: 78px; height: 78px;
@@ -148,7 +162,7 @@
     .hero-badge.pop { animation: pop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1); }
     .hero-status { font-size: 20px; font-weight: 800; letter-spacing: -0.01em; }
     .hero-power { margin-top: 12px; display: flex; align-items: baseline; justify-content: center; gap: 6px; }
-    .hero-power .num { font-size: 52px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+    .hero-power .num { font-size: 52px; font-weight: 800; letter-spacing: var(--cc-title-tracking); line-height: 1; font-variant-numeric: tabular-nums; }
     .hero-power .unit { font-size: 18px; font-weight: 700; opacity: 0.8; }
     .hero-sub { margin-top: 6px; font-size: 13px; opacity: 0.82; }
 
@@ -169,7 +183,7 @@
 
     /* ---- Cost ---- */
     .cost {
-      background: linear-gradient(135deg, #0f172a, #1e293b);
+      background: var(--cc-navy);
       color: #fff;
       border-radius: 20px;
       padding: 16px 18px;
@@ -216,9 +230,9 @@
     .tech-grid > div { display: flex; flex-direction: column; }
     .tech-grid span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
     .tech-grid b { font-size: 16px; font-variant-numeric: tabular-nums; }
-    .tech-link { display: block; padding: 12px 16px 14px; font-size: 13px; font-weight: 600; color: var(--green); text-decoration: none; }
+    .tech-link { display: block; padding: 12px 16px 14px; font-size: 13px; font-weight: 700; color: var(--cc-blue-ink); text-decoration: none; }
 
-    .foot { text-align: center; font-size: 12px; color: var(--muted); padding-top: 4px; }
+    .foot { text-align: center; font-size: 13px; font-weight: 800; letter-spacing: -0.01em; color: var(--muted); padding-top: 4px; }
 
     .banner {
       background: var(--banner-bg);
@@ -231,7 +245,7 @@
     }
 
     @keyframes pulse { from { transform: scale(0.9); opacity: 0.9; } to { transform: scale(1.5); opacity: 0; } }
-    @keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); } 70%,100% { box-shadow: 0 0 0 8px rgba(34,197,94,0); } }
+    @keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(76,161,84,0.5); } 70%,100% { box-shadow: 0 0 0 8px rgba(76,161,84,0); } }
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes pop {
       0% { transform: scale(0.6); }
@@ -251,7 +265,7 @@
 <body>
   <div class="app">
     <div class="topbar">
-      <a class="logo" href="/mapa" title="Ver mapa de cargadores">Carga<b>Cerca</b></a>
+      <a class="logo" href="/mapa" title="Ver mapa de cargadores"><img class="cc-logo" src="/brand/logo-horizontal-claro.svg" alt="CargaCerca" /></a>
       <span class="live" id="live">conectando…</span>
     </div>
 
@@ -265,6 +279,7 @@
     <div class="request-card" id="requestCard" hidden>
       <button class="request-btn" id="requestBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" color="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11l1.3-4a2 2 0 0 1 1.9-1.4h7.6a2 2 0 0 1 1.9 1.4L19 11"/><rect x="3" y="11" width="18" height="6" rx="2"/><circle cx="7.5" cy="17.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="16.5" cy="17.5" r="1.3" fill="currentColor" stroke="none"/></svg> Quiero cargar mi auto</button>
       <div class="request-hint" id="requestHint"></div>
+      <div class="my-rep" id="myRep" hidden></div>
     </div>
 
     <section class="hero" id="hero">
@@ -313,10 +328,11 @@
       <a class="tech-link" id="techLink" href="#">Ver panel técnico completo →</a>
     </details>
 
-    <div class="foot">CargaCerca · prototipo</div>
+    <div class="foot">Enchufate al barrio.</div>
   </div>
 
   <script src="/icons.js"></script>
+  <script src="/conductor.js"></script>
   <script src="/cliente.js"></script>
 </body>
 </html>

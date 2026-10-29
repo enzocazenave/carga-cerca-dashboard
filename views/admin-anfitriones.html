@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>CargaCerca · Anfitriones</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="/brand.css" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <a class="brand" href="/admin"><img class="cc-logo" src="/brand/logo-horizontal-oscuro.svg" alt="CargaCerca" /></a>
+      <nav class="nav">
+        <a href="/admin">Cargadores</a>
+        <a href="/admin/anfitriones" class="active">Anfitriones</a>
+        <a href="/admin/interesados">Interesados</a>
+        <a href="/mapa">Mapa</a>
+      </nav>
+      <div class="user-menu" id="userMenu"></div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="page-head">
+      <div>
+        <h1>Anfitriones</h1>
+        <div class="sub">Dueños de cargadores con acceso a su panel. El dueño de cada cargador se elige al editarlo.</div>
+      </div>
+    </div>
+
+    <div class="split-panel">
+      <div class="table-wrap">
+        <table class="sessions-table">
+          <thead><tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Cargadores</th><th>Alta</th></tr></thead>
+          <tbody id="usersBody"></tbody>
+        </table>
+      </div>
+
+      <form class="panel-card" id="userForm" novalidate>
+        <h2>Nuevo anfitrión</h2>
+        <div class="field"><label for="uName">Nombre</label><input id="uName" maxlength="80" required /></div>
+        <div class="field"><label for="uEmail">Email</label><input id="uEmail" type="email" required /></div>
+        <div class="field">
+          <label for="uPass">Contraseña inicial</label>
+          <div class="field-row"><input id="uPass" minlength="8" required /><button type="button" class="btn secondary" id="uGen">Generar</button></div>
+          <div class="field-hint">Pasásela al anfitrión. Mínimo 8 caracteres.</div>
+        </div>
+        <div class="modal-error" id="uErr"></div>
+        <button class="btn" type="submit">Crear anfitrión</button>
+        <div class="created" id="uDone" hidden></div>
+      </form>
+    </div>
+  </main>
+
+  <script src="/panel.js"></script>
+  <script src="/admin-anfitriones.js"></script>
+</body>
+</html>

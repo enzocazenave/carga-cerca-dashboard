@@ -32,17 +32,52 @@ function esc(v) {
   ));
 }
 
-async function api(path, opts) {
-  const res = await fetch(path, opts);
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
-  return data;
+function fmtMoney(value, currency) {
+  try {
+    return new Intl.NumberFormat('es-AR', { style: 'currency', currency: currency || 'ARS', maximumFractionDigits: value < 100 ? 2 : 0 }).format(value);
+  } catch {
+    return `$ ${value.toFixed(2)}`;
+  }
+}
+
+// Quién pidió cargar y su reputación, para que el anfitrión sepa quién viene.
+function requestLine(pr) {
+  if (!pr || !pr.name) return '';
+  const rep = fmtReputation(pr.reputation) || 'Sin reseñas todavía';
+  return `<div class="card-line request">${iconSvg('car', { size: 13 })} Pidió cargar <b>${esc(pr.name)}</b> <span class="rep${pr.reputation && pr.reputation.count ? '' : ' new'}">${rep}</span></div>`;
+}
+
+function statsLine(c) {
+  const st = c.sessionStats;
+  if (!st || !st.sessions) return '<div class="seen">Sin cargas registradas</div>';
+  const pend = st.pendingReviews
+    ? ` <a class="card-badge" href="/chargers/${encodeURIComponent(c.chargerId)}#cargas">${st.pendingReviews} para reseñar</a>`
+    : '';
+  return `<div class="seen">${st.sessions} ${st.sessions === 1 ? 'carga' : 'cargas'} · ${fmtMoney(st.amount, st.currency)} cobrados${pend}</div>`;
+}
+
+// panelApi (ver /public/panel.js) manda a /login si la sesión venció.
+const api = panelApi;
+
+// Totales de toda la red en los últimos 30 días ("para nosotros").
+async function loadSummary() {
+  let s;
+  try {
+    s = (await api('/api/summary?period=30d')).totals;
+  } catch {
+    return;
+  }
+  document.getElementById('summary').innerHTML = `
+    <div class="metric"><div class="label">Cobrado a conductores</div><div class="big">${fmtMoney(s.amount, s.currency)}</div></div>
+    <div class="metric"><div class="label">Comisión CargaCerca</div><div class="big">${fmtMoney(s.commission, s.currency)}</div></div>
+    <div class="metric"><div class="label">Pagado a anfitriones</div><div class="big">${fmtMoney(s.hostNet, s.currency)}</div></div>
+    <div class="metric"><div class="label">Cargas</div><div class="big">${s.sessions}</div><div class="small">${s.drivers} conductores</div></div>`;
 }
 
 async function load() {
   let chargers;
   try {
-    chargers = await api('/api/chargers');
+    chargers = await api('/api/panel/chargers');
   } catch (e) {
     listEl.innerHTML = `<div class="empty">No se pudo cargar: ${esc(e.message)}</div>`;
     return;
@@ -61,12 +96,15 @@ async function load() {
           <div class="status"><span class="dot ${cls}"></span>${esc(c.status)}</div>
           <div class="power">${powerW} W</div>
           <div class="seen">Última conexión: ${fmtAgo(c.lastSeenAt)}</div>
+          <div class="seen">${c.owner ? `Anfitrión <b>${esc(c.owner.name)}</b>` : 'Sin anfitrión asignado'} · ${fmtMoney(c.pricePerKwh, c.currency)}/kWh</div>
+          ${c.session ? `<div class="card-line request">${iconSvg('bolt', { size: 13 })} Cargando <b>${esc(c.session.driverName || 'sin identificar')}</b></div>` : requestLine(c.pendingRequest)}
           <div class="seen" style="display:flex;align-items:center;gap:5px">${
             c.lat != null && c.lng != null
               ? iconSvg('mapPin', { size: 12 }) + ' En el mapa'
               : iconSvg('alertTriangle', { size: 12 }) + ' Sin coordenadas · no aparece en el mapa'
           }</div>
         </a>
+        ${statsLine(c)}
         <div class="card-actions">
           <a class="btn link" href="/c/${encodeURIComponent(c.chargerId)}">Vista cliente</a>
           <button class="btn link" data-edit="${esc(c.chargerId)}">Editar</button>
@@ -96,8 +134,18 @@ async function remove(chargerId) {
   }
 }
 
-function openModal(charger) {
+let anfitriones = [];
+
+async function openModal(charger) {
   const isEdit = !!charger;
+  try {
+    anfitriones = (await api('/api/users')).filter((u) => u.role === 'anfitrion');
+  } catch {
+    /* sin lista, el select queda solo con "Sin anfitrión" */
+  }
+  const ownerOptions = anfitriones
+    .map((u) => `<option value="${u.id}" ${charger?.owner?.id === u.id ? 'selected' : ''}>${esc(u.name)} · ${esc(u.email)}</option>`)
+    .join('');
   modalRoot.innerHTML = `
     <div class="modal-backdrop" id="backdrop">
       <div class="modal">
@@ -110,6 +158,16 @@ function openModal(charger) {
         <div class="field">
           <label>Charger ID *</label>
           <input id="f-cid" value="${esc(charger?.chargerId || '')}" ${isEdit ? 'disabled' : ''} placeholder="CC-001" />
+        </div>
+        <div class="field-row two">
+          <div class="field">
+            <label>Anfitrión (dueño)</label>
+            <select id="f-owner"><option value="">Sin anfitrión</option>${ownerOptions}</select>
+          </div>
+          <div class="field">
+            <label>Precio por kWh</label>
+            <input id="f-price" type="number" min="0" step="1" value="${charger?.ownPricePerKwh ?? ''}" placeholder="General" />
+          </div>
         </div>
         <div class="field">
           <label>Ubicación (texto libre)</label>
@@ -170,6 +228,8 @@ function openModal(charger) {
       description: document.getElementById('f-desc').value.trim(),
       lat: lat === '' ? null : Number(lat),
       lng: lng === '' ? null : Number(lng),
+      ownerId: document.getElementById('f-owner').value || null,
+      pricePerKwh: document.getElementById('f-price').value === '' ? null : Number(document.getElementById('f-price').value),
     };
     const errEl = document.getElementById('mErr');
     try {
@@ -197,5 +257,8 @@ function openModal(charger) {
 
 document.getElementById('addBtn').addEventListener('click', () => openModal(null));
 
+mountUserMenu(document.getElementById('userMenu'));
 load();
+loadSummary();
 setInterval(load, 2000);
+setInterval(loadSummary, 10000);

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#F4F5F8" />
+  <title>CargaCerca · Mis cargadores</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="/brand.css" />
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body class="theme-light" data-role="anfitrion">
+  <header class="header">
+    <div class="header-inner">
+      <a class="brand" href="/anfitrion"><img class="cc-logo" src="/brand/logo-horizontal-claro.svg" alt="CargaCerca" /></a>
+      <nav class="nav"><a href="/anfitrion" class="active">Mis cargadores</a><a href="/mapa">Mapa</a></nav>
+      <div class="user-menu" id="userMenu"></div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="page-head">
+      <div>
+        <h1 id="hello">Hola</h1>
+        <div class="sub">Así vienen tus cargadores.</div>
+      </div>
+      <div class="period-tabs" role="group" aria-label="Período">
+        <button type="button" data-period="hoy">Hoy</button>
+        <button type="button" data-period="7d">7 días</button>
+        <button type="button" data-period="30d" aria-pressed="true">30 días</button>
+        <button type="button" data-period="todo">Todo</button>
+      </div>
+    </div>
+
+    <div class="host-kpis" id="kpis"></div>
+
+    <div class="chart-box">
+      <h3>Tus ingresos por día</h3>
+      <div style="position: relative; height: 220px"><canvas id="incomeChart" aria-label="Tus ingresos por día" role="img"></canvas></div>
+      <div class="chart-empty" id="chartEmpty" hidden></div>
+    </div>
+
+    <div class="section-title">Tus cargadores</div>
+    <div class="host-chargers" id="chargers"></div>
+
+    <div class="section-title">Últimas cargas</div>
+    <div class="table-wrap">
+      <table class="sessions-table">
+        <thead><tr><th>Inicio</th><th>Cargador</th><th>Conductor</th><th>Energía</th><th>Cobrado</th><th>Tu ingreso</th><th>Reseña</th></tr></thead>
+        <tbody id="recentBody"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script src="/conductor.js"></script>
+  <script src="/panel.js"></script>
+  <script src="/anfitrion.js"></script>
+</body>
+</html>

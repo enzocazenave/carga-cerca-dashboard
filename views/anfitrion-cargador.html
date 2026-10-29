@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#F4F5F8" />
+  <title>CargaCerca · Mi cargador</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="/brand.css" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="theme-light" data-role="anfitrion">
+  <header class="header">
+    <div class="header-inner">
+      <a class="brand" href="/anfitrion"><img class="cc-logo" src="/brand/logo-horizontal-claro.svg" alt="CargaCerca" /></a>
+      <nav class="nav"><a href="/anfitrion">Mis cargadores</a><a href="/mapa">Mapa</a></nav>
+      <div class="user-menu" id="userMenu"></div>
+    </div>
+  </header>
+
+  <main class="container">
+    <a href="/anfitrion" class="back-link">← Mis cargadores</a>
+    <div class="detail-head">
+      <h1 id="name">Cargador</h1>
+      <div class="detail-meta"><span class="status"><span class="dot" id="statusDot"></span><span id="statusText">—</span></span><span id="loc"></span></div>
+    </div>
+
+    <div class="live-box" id="liveBox"></div>
+
+    <div class="section-title" id="cargas">Cargas</div>
+    <div class="metrics" id="cargasStats"></div>
+    <div class="review-queue" id="reviewQueue"></div>
+    <div class="table-wrap">
+      <table class="sessions-table">
+        <thead><tr><th>Inicio</th><th>Conductor</th><th>Duración</th><th>Energía</th><th>Cobrado</th><th>Tu ingreso</th><th>Reseña</th></tr></thead>
+        <tbody id="sessionsBody"></tbody>
+      </table>
+    </div>
+    <div class="table-note" id="scaleNote" hidden>La energía y los montos usan la escala de demo (el prototipo mide cargas chicas). Pasá el mouse por la energía para ver lo medido.</div>
+
+    <div class="section-title">Configuración</div>
+    <form class="panel-card" id="configForm" novalidate>
+      <div class="config-grid">
+        <div class="field"><label for="cName">Nombre que ven los conductores</label><input id="cName" maxlength="80" required /></div>
+        <div class="field">
+          <label for="cPrice">Precio por kWh</label>
+          <input id="cPrice" type="number" min="0" step="1" />
+          <div class="field-hint" id="cPriceHint"></div>
+        </div>
+        <div class="field wide"><label for="cLoc">Ubicación</label><input id="cLoc" maxlength="120" placeholder="Edificio, cochera, cómo se entra" /></div>
+        <div class="field wide"><label for="cDesc">Reglas de uso</label><textarea id="cDesc" maxlength="400" placeholder="Horarios, conector, cuánto tiempo pueden quedarse"></textarea></div>
+        <div class="field wide">
+          <label>Ubicación en el mapa</label>
+          <div class="field-row">
+            <input id="cLat" type="number" step="any" placeholder="Latitud" aria-label="Latitud" />
+            <input id="cLng" type="number" step="any" placeholder="Longitud" aria-label="Longitud" />
+            <button type="button" class="btn secondary" id="cUseLoc">Usar mi ubicación</button>
+          </div>
+          <div class="field-hint" id="cLocHint"></div>
+        </div>
+      </div>
+      <div class="modal-error" id="cErr"></div>
+      <div class="modal-actions" style="align-items: center"><span class="form-saved" id="cSaved" role="status"></span><button class="btn" type="submit">Guardar cambios</button></div>
+    </form>
+  </main>
+
+  <script src="/conductor.js"></script>
+  <script src="/panel.js"></script>
+  <script src="/anfitrion-cargador.js"></script>
+  <script src="/cargas.js"></script>
+</body>
+</html>

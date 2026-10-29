@@ -5,8 +5,10 @@
 // entre SO/navegador, sin control de color/tamaño). Trazos en viewBox
 // 24x24, pensados para heredar fill/stroke del contenedor.
 const CC_ICONS = {
-  // Sólido: es el mismo rayo de /public/icons/icon-*.png (la marca).
+  // Sólido: el rayo de la marca (bajo el techo del isotipo).
   bolt: '<path d="M13 2L4.5 13.5H11L10 22L19.5 9.5H13L13 2Z" fill="currentColor" stroke="none"/>',
+  // La casa de los pines de cargador del libro de marca ("Elementos gráficos").
+  home: '<path d="M4 11.5 12 5l8 6.5"/><path d="M6.5 9.8V19h11V9.8"/>',
   plug: '<path d="M9 2v5M15 2v5"/><path d="M6.5 7h11a1 1 0 0 1 1 1v3a6.5 6.5 0 0 1-13 0V8a1 1 0 0 1 1-1Z"/><path d="M12 17.5V22"/>',
   batteryLow: '<rect x="2" y="7" width="17" height="10" rx="2"/><path d="M21 10v4"/><rect x="5" y="10.5" width="3" height="3" fill="currentColor" stroke="none"/>',
   card: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',

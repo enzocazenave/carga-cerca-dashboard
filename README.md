@@ -15,7 +15,9 @@ ver sus datos casi en tiempo real.
 - HTML + CSS + JavaScript vanilla
 - Chart.js vía CDN
 
-Sin React, sin build, sin TypeScript, sin Docker, sin WebSockets, **sin autenticación**.
+Sin React, sin build, sin TypeScript, sin Docker, sin WebSockets. Login propio
+para el panel (scrypt + cookie de sesión, sin dependencias, ver [`auth.js`](auth.js));
+los conductores y el ESP32 no necesitan cuenta.
 
 ---
 
@@ -26,7 +28,7 @@ npm install
 npm start
 ```
 
-Abrir: <http://localhost:3000>
+Abrir: <http://localhost:3000> (landing) o <http://localhost:3000/admin> (panel).
 
 La base SQLite se crea sola en `./data/cargacerca.sqlite` la primera vez.
 
@@ -34,9 +36,69 @@ La base SQLite se crea sola en `./data/cargacerca.sqlite` la primera vez.
 
 | Ruta                     | Para quién      | Qué muestra                                                        |
 | ------------------------ | --------------- | ---------------------------------------------------------------- |
-| `/`                      | Interno         | Panel de cargadores (alta / edición / borrado).                  |
-| `/chargers/:chargerId`   | Interno/técnico | Detalle completo: todas las métricas + 3 gráficos.               |
+| `/`                      | **Público**     | Landing comercial: propuesta para conductores y anfitriones, precios, preguntas y formulario de interesados. |
+| `/login`                 | Admin / anfitrión | Entrada a los paneles (con botones de demo si `DEMO_LOGIN` está prendido). |
+| `/admin`                 | **Admin**       | Toda la red: totales de 30 días, cargadores (alta / edición / dueño / precio / borrado). |
+| `/admin/anfitriones`     | **Admin**       | Alta de anfitriones (con contraseña inicial).                    |
+| `/admin/interesados`     | **Admin**       | Lo que dejan en el formulario de la landing.                     |
+| `/chargers/:chargerId`   | **Admin**       | Detalle técnico: métricas, gráficos, cargas y reseñas.           |
+| `/anfitrion`             | **Anfitrión**   | Sus ingresos por período (hoy / 7 / 30 días / todo), sus cargadores en vivo y últimas cargas. |
+| `/anfitrion/cargadores/:chargerId` | **Anfitrión** | Un cargador: estado en vivo, cargas, reseñas y configuración (nombre, precio, reglas, ubicación). |
+| `/mapa`                  | **Cliente**     | Mapa de cargadores cercanos (entrada de la app instalable).       |
 | `/c/:chargerId`          | **Cliente**     | Vista mobile simple: estado, energía cargada (kWh y ≈ km), tiempo, costo estimado y un gráfico de potencia. Datos técnicos plegados. |
+
+### Marca
+
+Todas las vistas usan el libro de marca v1.0 (`CargaCerca-logo-kit-v2`):
+
+- Colores y fuente (Plus Jakarta Sans) centralizados en [`public/brand.css`](public/brand.css).
+  Los colores del firmware (`esp32/`) son los mismos, pasados a RGB565.
+- Logos, videos (720p) y posters que usa la web en [`public/brand/`](public/brand/).
+- Íconos de app: versión navy (la principal según el libro) en `public/icons/`.
+- Tono de los textos: de vos, frases cortas, sin dos puntos ni signos de exclamación.
+  Los cargadores no se reservan: se usan por orden de llegada.
+
+### Sesiones de carga y reputación de conductores
+
+Cada carga queda registrada en `charge_sessions` ([`sessions.js`](sessions.js)):
+el servidor integra la energía medición a medición, y la sesión se abre con
+corriente ≥ 50 mA (o "cargando" del ESP32 con relé) y se cierra con 10 s bajo
+el umbral, con "finalizada" del relé o cuando el cargador deja de mandar datos.
+Guarda conductor, duración, energía, precio por kWh vigente y monto.
+
+En el detalle del cargador (`/chargers/:id`) el anfitrión ve el historial y,
+cuando una carga termina, puede dejarle una reseña de 1 a 5 estrellas al
+conductor. El promedio es la reputación del conductor: la ven los anfitriones
+cuando les piden cargar, y el propio conductor en la vista cliente.
+
+Sin login, el conductor se identifica con un id anónimo que genera su
+navegador ([`public/conductor.js`](public/conductor.js)); el servidor nunca lo
+devuelve. Endpoints: `GET /api/chargers/:id/sessions`,
+`POST /api/sessions/:id/review`, `GET /api/drivers/:driverId`.
+
+### Usuarios y permisos
+
+| Rol | Ve | Puede |
+| --- | --- | --- |
+| Admin (equipo CargaCerca) | Toda la red, comisiones, interesados | Crear/borrar cargadores, asignar dueño, crear anfitriones, reseñar cualquier carga |
+| Anfitrión | Solo sus cargadores | Configurar nombre, precio por kWh, reglas y ubicación; reseñar a quienes cargaron |
+| Conductor (sin cuenta) | Mapa y vista cliente | Pedir carga; ver su reputación |
+
+Para empezar en un deploy nuevo: definir `ADMIN_EMAIL` y `ADMIN_PASSWORD`,
+entrar a `/login`, crear los anfitriones en `/admin/anfitriones` y asignarles
+sus cargadores con **Editar**. Los endpoints del ESP32 (`/api/measurements`,
+`/api/chargers/:id/device-state`, `GET /api/chargers/:id/request`) siguen sin
+login.
+
+### Interesados (formulario de la landing)
+
+`POST /api/leads` guarda nombre, contacto, barrio y tipo (`conductor`,
+`particular`, `consorcio`, `comercio`) en la tabla `leads` de SQLite.
+Los ve el admin en `/admin/interesados`. También por consola:
+
+```bash
+sqlite3 data/cargacerca.sqlite "SELECT * FROM leads ORDER BY id DESC"
+```
 
 La vista cliente se abre desde el panel (botón **Vista cliente** en cada card) o
 compartiendo el link directo `https://TU-DOMINIO.up.railway.app/c/CC-001`.
@@ -62,6 +124,10 @@ Crea el cargador si no existe y envía una medición cada 5 s alternando carga/r
 | `DATABASE_PATH`  | `./data/cargacerca.sqlite`   | Ruta del archivo SQLite. En Railway apuntar a un Volume. |
 | `PRICE_PER_KWH`  | `0`                          | Precio de la energía para la vista cliente. `0` oculta el costo. |
 | `PRICE_CURRENCY` | `ARS`                        | Moneda del costo estimado.                              |
+| `DEMO_ENERGY_SCALE` | `1000`                    | Multiplica la energía medida antes de mostrarla y cobrarla (el prototipo mide cargas de ~12 W). Con un auto real, `1`. |
+| `COMMISSION_RATE` | `0.15`                      | Comisión de CargaCerca por carga. El resto es ingreso del anfitrión. |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | —            | Crea el admin real al arrancar (o le actualiza la contraseña). |
+| `DEMO_LOGIN`     | `1` en local, `0` en Railway | Botones "Anfitrión demo" / "Admin demo" en `/login`, sin contraseña. El admin demo ve los interesados de la landing: en un deploy público, prenderlo solo para presentar. |
 | `KM_PER_KWH`     | `6`                          | Autonomía aprox. por kWh para el "≈ X km cargados".     |
 
 El servidor escucha en `0.0.0.0` y usa `process.env.PORT || 3000`. No hay

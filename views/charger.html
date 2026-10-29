@@ -3,21 +3,34 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
   <title>CargaCerca · Cargador</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="/brand.css" />
   <link rel="stylesheet" href="/styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
-<body>
+<body data-role="admin">
   <header class="header">
     <div class="header-inner">
-      <div class="brand">Carga<span>Cerca</span></div>
-      <nav class="nav"><a href="/">Cargadores</a></nav>
+      <a class="brand" href="/admin"><img class="cc-logo" src="/brand/logo-horizontal-oscuro.svg" alt="CargaCerca" /></a>
+      <nav class="nav">
+        <a href="/admin">Cargadores</a>
+        <a href="/admin/anfitriones">Anfitriones</a>
+        <a href="/admin/interesados">Interesados</a>
+        <a href="/mapa">Mapa</a>
+      </nav>
+      <div class="user-menu" id="userMenu"></div>
     </div>
   </header>
 
   <main class="container">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
-      <a href="/" class="back-link">← Volver a cargadores</a>
+      <a href="/admin" class="back-link">← Volver a cargadores</a>
       <a id="clientLink" class="back-link" href="#">Vista cliente →</a>
     </div>
 
@@ -72,6 +85,17 @@
     <div class="section-title">Sesión actual</div>
     <div id="sessionBox"></div>
 
+    <div class="section-title" id="cargas">Cargas</div>
+    <div class="metrics" id="cargasStats"></div>
+    <div class="review-queue" id="reviewQueue"></div>
+    <div class="table-wrap">
+      <table class="sessions-table">
+        <thead><tr><th>Inicio</th><th>Conductor</th><th>Duración</th><th>Energía</th><th>Cobrado</th><th>Comisión</th><th>Reseña</th></tr></thead>
+        <tbody id="sessionsBody"></tbody>
+      </table>
+    </div>
+    <div class="table-note" id="scaleNote" hidden>La energía y los montos usan la escala de demo (el prototipo mide cargas chicas). Pasá el mouse por la energía para ver lo medido.</div>
+
     <div class="section-title">Gráficos · últimas 100 mediciones</div>
     <div class="charts">
       <div class="chart-box"><h3>Corriente (A)</h3><canvas id="chartCurrent"></canvas></div>
@@ -80,6 +104,9 @@
     </div>
   </main>
 
+  <script src="/conductor.js"></script>
+  <script src="/panel.js"></script>
   <script src="/detail.js"></script>
+  <script src="/cargas.js"></script>
 </body>
 </html>
